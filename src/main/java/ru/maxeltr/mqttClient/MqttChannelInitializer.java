@@ -41,12 +41,22 @@ public class MqttChannelInitializer extends ChannelInitializer<SocketChannel> {
     private final ChannelHandler idleStateHandler ;
     private final ChannelHandler mqttPingHandler ;
     private final ChannelHandler mqttChannelHandler ;
+    private final ChannelHandler mqttConnectHandler ;
 
-    public MqttChannelInitializer(MqttDecoder mqttDecoder, MqttEncoder mqttEncoder, ChannelHandler idleStateHandler, ChannelHandler mqttPingHandler, ChannelHandler mqttChannelHandler) {
+    public MqttChannelInitializer(
+            MqttDecoder mqttDecoder,
+            MqttEncoder mqttEncoder,
+            ChannelHandler idleStateHandler,
+            ChannelHandler mqttPingHandler,
+            ChannelHandler mqttConnectHandler,
+            ChannelHandler mqttChannelHandler
+
+    ) {
         this.mqttDecoder = mqttDecoder;
         this.mqttEncoder = mqttEncoder;
         this.idleStateHandler = idleStateHandler;
         this.mqttPingHandler = mqttPingHandler;
+        this.mqttConnectHandler = mqttConnectHandler;
         this.mqttChannelHandler = mqttChannelHandler;
     }
 
@@ -56,6 +66,8 @@ public class MqttChannelInitializer extends ChannelInitializer<SocketChannel> {
         ch.pipeline().addLast("mqttEncoder", this.mqttEncoder);
         ch.pipeline().addLast("idleStateHandler", this.idleStateHandler);
         ch.pipeline().addLast("mqttPingHandler", this.mqttPingHandler);
+        ch.pipeline().addLast("mqttConnectHandler", this.mqttConnectHandler);
         ch.pipeline().addLast("mqttChannelHandler", this.mqttChannelHandler);
+
     }
 }

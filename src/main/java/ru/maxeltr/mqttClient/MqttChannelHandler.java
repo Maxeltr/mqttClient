@@ -59,19 +59,9 @@ public class MqttChannelHandler extends SimpleChannelInboundHandler<MqttMessage>
         this.config = config;
     }
 
-    public void publishConnAckEvent(final String message) {
-
-        ConnAckEvent customSpringEvent = new ConnAckEvent(this, message);
-        applicationEventPublisher.publishEvent(customSpringEvent);
-
-    }
-
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, MqttMessage msg) throws Exception {
         switch (msg.fixedHeader().messageType()) {
-            case CONNACK:
-                handleConack(ctx.channel(), (MqttConnAckMessage) msg);
-                break;
             case SUBACK:
 
                 break;
@@ -92,70 +82,6 @@ public class MqttChannelHandler extends SimpleChannelInboundHandler<MqttMessage>
                 break;
             case PUBCOMP:
 
-                break;
-        }
-    }
-
-    @Override
-    public void channelActive(ChannelHandlerContext ctx) throws Exception {
-        super.channelActive(ctx);
-
-        MqttFixedHeader connectFixedHeader = new MqttFixedHeader(MqttMessageType.CONNECT, false, MqttQoS.AT_MOST_ONCE, false, 0);
-
-        MqttConnectVariableHeader connectVariableHeader = new MqttConnectVariableHeader(
-                this.config.getProperty("protocolName", ""),
-                Integer.parseInt(this.config.getProperty("protocolVersion", "")),
-                true,
-                true,
-                false,
-                0,
-                false,
-                false,
-                20,
-                MqttProperties.NO_PROPERTIES
-        );
-
-        MqttConnectPayload connectPayload = new MqttConnectPayload(
-                this.config.getProperty("clientId", ""),
-                MqttProperties.NO_PROPERTIES,
-                null,
-                null,
-                this.config.getProperty("userName", ""),
-                this.config.getProperty("password", "").getBytes()
-        );
-
-        MqttConnectMessage connectMessage = new MqttConnectMessage(connectFixedHeader, connectVariableHeader, connectPayload);
-        ctx.writeAndFlush(connectMessage);
-        System.out.println("Sent CONNECT");
-
-    }
-
-    @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-        super.channelInactive(ctx);
-    }
-
-    private void handleConack(Channel channel, MqttConnAckMessage message) {
-        switch (message.variableHeader().connectReturnCode()) {
-            case CONNECTION_ACCEPTED:
-
-                logger.log(Level.INFO, String.format("Connection accepted %s.", MqttConnectReturnCode.CONNECTION_ACCEPTED));
-                System.out.println(String.format("Connection accepted %s.", MqttConnectReturnCode.CONNECTION_ACCEPTED));
-
-                channel.flush();
-                break;
-
-            case CONNECTION_REFUSED_BAD_USER_NAME_OR_PASSWORD:
-            case CONNECTION_REFUSED_IDENTIFIER_REJECTED:
-            case CONNECTION_REFUSED_NOT_AUTHORIZED:
-            case CONNECTION_REFUSED_SERVER_UNAVAILABLE:
-            case CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION:
-
-                logger.log(Level.INFO, String.format("Connection refused %s.", message.variableHeader().connectReturnCode()));
-                System.out.println(String.format("Connection refused %s.", message.variableHeader().connectReturnCode()));
-
-                channel.close();
-                // Don't start reconnect logic here
                 break;
         }
     }

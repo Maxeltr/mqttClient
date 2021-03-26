@@ -36,6 +36,7 @@ import io.netty.util.concurrent.Promise;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationListener;
 import ru.maxeltr.mqttClient.Config.Config;
 
@@ -43,7 +44,7 @@ import ru.maxeltr.mqttClient.Config.Config;
  *
  * @author Maxim Eltratov <<Maxim.Eltratov@ya.ru>>
  */
-public class MqttClientImpl implements ApplicationListener<ConnAckEvent>{
+public class MqttClientImpl implements ApplicationListener<ApplicationEvent>{
 
     private static final Logger logger = Logger.getLogger(MqttClientImpl.class.getName());
 
@@ -61,7 +62,7 @@ public class MqttClientImpl implements ApplicationListener<ConnAckEvent>{
     }
 
     @Override
-    public void onApplicationEvent(ConnAckEvent event) {
+    public void onApplicationEvent(ApplicationEvent event) {
 
     }
 
@@ -72,13 +73,11 @@ public class MqttClientImpl implements ApplicationListener<ConnAckEvent>{
      * @param port The tcp port to connect to
      * @return
      */
-    public Future connect(String host, int port) {
+    public ChannelFuture connect(String host, int port) {
         logger.log(Level.INFO, String.format("Connect to %s via port %s", host, port));
         System.out.println(String.format("Connect to %s via port %s.", host, port));
 
         this.workerGroup = new NioEventLoopGroup();
-        Promise<?> connectResult = new DefaultPromise<>(this.workerGroup.next());
-
         Bootstrap bootstrap = new Bootstrap();
         bootstrap.group(this.workerGroup);
         bootstrap.channel(NioSocketChannel.class);
@@ -91,7 +90,7 @@ public class MqttClientImpl implements ApplicationListener<ConnAckEvent>{
         logger.log(Level.INFO, String.format("Client connected."));
         System.out.println(String.format("Client connected."));
 
-        return connectResult;
+        return future;
     }
 
     public void shutdown() {

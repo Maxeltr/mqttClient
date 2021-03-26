@@ -40,6 +40,7 @@ import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import ru.maxeltr.mqttClient.MqttChannelHandler;
 import ru.maxeltr.mqttClient.MqttChannelInitializer;
 import ru.maxeltr.mqttClient.MqttClientImpl;
+import ru.maxeltr.mqttClient.MqttConnectHandler;
 import ru.maxeltr.mqttClient.MqttPingHandler;
 
 /**
@@ -91,14 +92,20 @@ public class AppAnnotationConfig {
     }
 
     @Bean
+    public MqttConnectHandler mqttConnectHandler(Config config) {
+        return new MqttConnectHandler(config);
+    }
+
+    @Bean
     public MqttChannelInitializer mqttChannelInitializer(
             MqttDecoder mqttDecoder,
             MqttEncoder mqttEncoder,
             ChannelHandler idleStateHandler,
             ChannelHandler mqttPingHandler,
+            MqttConnectHandler mqttConnectHandler,
             ChannelHandler mqttChannelHandler
     ) {
-        return new MqttChannelInitializer(mqttDecoder, mqttEncoder, idleStateHandler, mqttPingHandler, mqttChannelHandler);
+        return new MqttChannelInitializer(mqttDecoder, mqttEncoder, idleStateHandler, mqttPingHandler, mqttConnectHandler, mqttChannelHandler);
     }
 
     @Bean

@@ -23,26 +23,34 @@
  */
 package ru.maxeltr.mqttClient;
 
-import org.springframework.context.ApplicationEvent;
+import io.netty.channel.ChannelFuture;
+import io.netty.handler.codec.mqtt.MqttConnectReturnCode;
 
 /**
  *
  * @author Maxim Eltratov <<Maxim.Eltratov@ya.ru>>
  */
-public class ConnAckEvent extends ApplicationEvent {
-    private final String message;
-    private final MqttConnectResult connectResult;
+public class MqttConnectResult {
 
-    public ConnAckEvent(Object source, String message, MqttConnectResult  connectResult) {
-        super(source);
-        this.message = message;
-        this.connectResult = connectResult;
-    }
-    public String getMessage() {
-        return message;
+    private final boolean success;
+    private final MqttConnectReturnCode returnCode;
+    private final ChannelFuture channelCloseFuture;
+
+    public MqttConnectResult(boolean success, MqttConnectReturnCode returnCode, ChannelFuture channelCloseFuture) {
+        this.success = success;
+        this.returnCode = returnCode;
+        this.channelCloseFuture = channelCloseFuture;
     }
 
-    public MqttConnectResult  getConnectResult() {
-        return connectResult;
+    public boolean isSuccess() {
+        return this.success;
+    }
+
+    public MqttConnectReturnCode getReturnCode() {
+        return this.returnCode;
+    }
+
+    public ChannelFuture getChannelCloseFuture() {
+        return this.channelCloseFuture;
     }
 }
