@@ -31,8 +31,16 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.codec.mqtt.MqttFixedHeader;
+import io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader;
+import io.netty.handler.codec.mqtt.MqttMessageType;
+import io.netty.handler.codec.mqtt.MqttQoS;
+import io.netty.handler.codec.mqtt.MqttSubscribeMessage;
+import io.netty.handler.codec.mqtt.MqttSubscribePayload;
+import io.netty.handler.codec.mqtt.MqttTopicSubscription;
 import io.netty.util.concurrent.DefaultPromise;
 import io.netty.util.concurrent.Promise;
+import java.util.Collections;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -91,6 +99,16 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>{
         System.out.println(String.format("Client connected."));
 
         return future;
+    }
+
+    public ChannelFuture subscribe(String topic, MqttQoS qos) {
+        MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.SUBSCRIBE, false, MqttQoS.AT_LEAST_ONCE, false, 0);
+        MqttTopicSubscription subscription = new MqttTopicSubscription(topic, qos);
+        MqttMessageIdVariableHeader variableHeader = MqttMessageIdVariableHeader.from(1);
+        MqttSubscribePayload payload = new MqttSubscribePayload(Collections.singletonList(subscription));
+        MqttSubscribeMessage message = new MqttSubscribeMessage(fixedHeader, variableHeader, payload);
+
+        return this.channel.writeAndFlush(message);
     }
 
     public void shutdown() {
