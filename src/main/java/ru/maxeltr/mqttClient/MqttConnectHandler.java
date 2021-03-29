@@ -38,6 +38,8 @@ import io.netty.handler.codec.mqtt.MqttMessageType;
 import io.netty.handler.codec.mqtt.MqttProperties;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import io.netty.util.ReferenceCountUtil;
+import io.netty.util.concurrent.DefaultPromise;
+import io.netty.util.concurrent.Promise;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,12 +52,14 @@ import ru.maxeltr.mqttClient.Config.Config;
  */
 public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
 
-    private static final Logger logger = Logger.getLogger(MqttClientImpl.class.getName());
+    private static final Logger logger = Logger.getLogger(MqttConnectHandler.class.getName());
 
     private final Config config;
 
     @Autowired
     private ApplicationEventPublisher applicationEventPublisher;
+
+    private Promise<MqttConnectResult> connectFuture;
 
     public MqttConnectHandler(Config config) {
         this.config = config;
@@ -70,7 +74,7 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
 
         MqttMessage message = (MqttMessage) msg;
         if (message.fixedHeader().messageType() == MqttMessageType.CONNACK) {
-            handleConack(ctx.channel(), (MqttConnAckMessage) message);
+            handleConnack(ctx.channel(), (MqttConnAckMessage) message);
         } else {
             ctx.fireChannelRead(ReferenceCountUtil.retain(msg));
         }
@@ -110,12 +114,14 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
 
     }
 
-    private void handleConack(Channel channel, MqttConnAckMessage message) {
+    private void handleConnack(Channel channel, MqttConnAckMessage message) {
         MqttConnectReturnCode returnCode = message.variableHeader().connectReturnCode();
 
         switch (message.variableHeader().connectReturnCode()) {
             case CONNECTION_ACCEPTED:
-                this.publishConnAckEvent(new MqttConnectResult(true, returnCode, channel.closeFuture()));
+                MqttConnectResult mqttResultSuccess = new MqttConnectResult(true, returnCode, channel.closeFuture());
+                this.publishConnAckEvent(mqttResultSuccess);
+                this.connectFuture.setSuccess(mqttResultSuccess);
                 logger.log(Level.INFO, String.format("Connection accepted %s.", returnCode));
                 System.out.println(String.format("Connection accepted %s.", returnCode));
 
@@ -127,7 +133,9 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
             case CONNECTION_REFUSED_NOT_AUTHORIZED:
             case CONNECTION_REFUSED_SERVER_UNAVAILABLE:
             case CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION:
-                this.publishConnAckEvent(new MqttConnectResult(false, returnCode, channel.closeFuture()));
+                MqttConnectResult mqttResultRefused = new MqttConnectResult(false, returnCode, channel.closeFuture());
+                this.publishConnAckEvent(mqttResultRefused);
+                this.connectFuture.setSuccess(mqttResultRefused);
                 logger.log(Level.INFO, String.format("Connection refused %s.", returnCode));
                 System.out.println(String.format("Connection refused %s.", returnCode));
 
@@ -141,5 +149,13 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
     private void publishConnAckEvent(MqttConnectResult mqttConnectResult) {
         applicationEventPublisher.publishEvent(new ConnAckEvent(this, mqttConnectResult.getReturnCode().name(), mqttConnectResult));
 
+    }
+
+    public Promise<MqttConnectResult> getConnectFuture() {
+        return this.connectFuture;
+    }
+
+    public void setConnectFuture(Promise<MqttConnectResult> connectFuture) {
+        this.connectFuture = connectFuture;
     }
 }

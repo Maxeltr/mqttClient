@@ -42,6 +42,7 @@ import ru.maxeltr.mqttClient.MqttChannelInitializer;
 import ru.maxeltr.mqttClient.MqttClientImpl;
 import ru.maxeltr.mqttClient.MqttConnectHandler;
 import ru.maxeltr.mqttClient.MqttPingHandler;
+import ru.maxeltr.mqttClient.MqttSubscriptionHandler;
 
 /**
  *
@@ -97,19 +98,25 @@ public class AppAnnotationConfig {
     }
 
     @Bean
+    public MqttSubscriptionHandler mqttSubscriptionHandler(Config config) {
+        return new MqttSubscriptionHandler(config);
+    }
+
+    @Bean
     public MqttChannelInitializer mqttChannelInitializer(
             MqttDecoder mqttDecoder,
             MqttEncoder mqttEncoder,
             ChannelHandler idleStateHandler,
             ChannelHandler mqttPingHandler,
             MqttConnectHandler mqttConnectHandler,
+            MqttSubscriptionHandler mqttSubscriptionHandler,
             ChannelHandler mqttChannelHandler
     ) {
-        return new MqttChannelInitializer(mqttDecoder, mqttEncoder, idleStateHandler, mqttPingHandler, mqttConnectHandler, mqttChannelHandler);
+        return new MqttChannelInitializer(mqttDecoder, mqttEncoder, idleStateHandler, mqttPingHandler, mqttConnectHandler, mqttSubscriptionHandler, mqttChannelHandler);
     }
 
     @Bean
-    public MqttClientImpl mqttClientImpl(ChannelInitializer mqttChannelInitializer, Config config) {
+    public MqttClientImpl mqttClientImpl(MqttChannelInitializer mqttChannelInitializer, Config config) {
         return new MqttClientImpl(mqttChannelInitializer, config);
     }
 

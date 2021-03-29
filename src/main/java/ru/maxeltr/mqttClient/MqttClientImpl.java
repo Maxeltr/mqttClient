@@ -42,6 +42,7 @@ import io.netty.util.concurrent.DefaultPromise;
 import io.netty.util.concurrent.Promise;
 import java.util.Collections;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.springframework.context.ApplicationEvent;
@@ -58,13 +59,15 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>{
 
     private Channel channel;
 
-    private final ChannelInitializer mqttChannelInitializer;
+    private final MqttChannelInitializer mqttChannelInitializer;
 
     private EventLoopGroup workerGroup;
 
     private final Config config;
 
-    public MqttClientImpl(ChannelInitializer mqttChannelInitializer, Config config) {
+    private final AtomicInteger nextMessageId = new AtomicInteger(1);
+
+    public MqttClientImpl(MqttChannelInitializer mqttChannelInitializer, Config config) {
         this.mqttChannelInitializer = mqttChannelInitializer;
         this.config = config;
     }
@@ -81,11 +84,13 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>{
      * @param port The tcp port to connect to
      * @return
      */
-    public ChannelFuture connect(String host, int port) {
+    public Promise<MqttConnectResult> connect(String host, int port) {
         logger.log(Level.INFO, String.format("Connect to %s via port %s", host, port));
         System.out.println(String.format("Connect to %s via port %s.", host, port));
 
         this.workerGroup = new NioEventLoopGroup();
+        Promise<MqttConnectResult> connectFuture = new DefaultPromise<>(this.workerGroup.next());
+        this.mqttChannelInitializer.getConnectHandler().setConnectFuture(connectFuture);
         Bootstrap bootstrap = new Bootstrap();
         bootstrap.group(this.workerGroup);
         bootstrap.channel(NioSocketChannel.class);
@@ -98,22 +103,42 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>{
         logger.log(Level.INFO, String.format("Client connected."));
         System.out.println(String.format("Client connected."));
 
-        return future;
+        return connectFuture;
     }
 
-    public ChannelFuture subscribe(String topic, MqttQoS qos) {
+    public Promise<MqttSubscriptionResult> subscribe(String topic, MqttQoS qos) {
+        Promise<MqttSubscriptionResult> subscribeFuture = new DefaultPromise<>(this.workerGroup.next());
+        this.mqttChannelInitializer.getSubscriptionHandler().setSubscriptionFuture(subscribeFuture);
         MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.SUBSCRIBE, false, MqttQoS.AT_LEAST_ONCE, false, 0);
         MqttTopicSubscription subscription = new MqttTopicSubscription(topic, qos);
         MqttMessageIdVariableHeader variableHeader = MqttMessageIdVariableHeader.from(1);
         MqttSubscribePayload payload = new MqttSubscribePayload(Collections.singletonList(subscription));
         MqttSubscribeMessage message = new MqttSubscribeMessage(fixedHeader, variableHeader, payload);
+        this.writeAndFlush(message);
 
-        return this.channel.writeAndFlush(message);
+        return subscribeFuture;
     }
 
     public void shutdown() {
-
+        if(this.channel != null){
+            this.channel.close();
+        }
         this.workerGroup.shutdownGracefully();
 
+    }
+
+    private ChannelFuture writeAndFlush(Object message){
+        if(this.channel == null){
+            return null;
+        }
+        if(this.channel.isActive()){
+            return this.channel.writeAndFlush(message);
+        }
+        return this.channel.newFailedFuture(new RuntimeException("Channel is closed"));
+    }
+
+    private int getNewMessageId(){
+        this.nextMessageId.compareAndSet(0xffff, 1);
+        return this.nextMessageId.getAndIncrement();
     }
 }
