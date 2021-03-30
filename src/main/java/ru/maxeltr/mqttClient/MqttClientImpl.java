@@ -38,10 +38,21 @@ import io.netty.handler.codec.mqtt.MqttQoS;
 import io.netty.handler.codec.mqtt.MqttSubscribeMessage;
 import io.netty.handler.codec.mqtt.MqttSubscribePayload;
 import io.netty.handler.codec.mqtt.MqttTopicSubscription;
+import io.netty.util.collection.IntObjectHashMap;
+import io.netty.util.collection.IntObjectMap;
 import io.netty.util.concurrent.DefaultPromise;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.FutureListener;
+import io.netty.util.concurrent.GenericFutureListener;
 import io.netty.util.concurrent.Promise;
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.concurrent.Future;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -53,7 +64,7 @@ import ru.maxeltr.mqttClient.Config.Config;
  *
  * @author Maxim Eltratov <<Maxim.Eltratov@ya.ru>>
  */
-public class MqttClientImpl implements ApplicationListener<ApplicationEvent>{
+public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 
     private static final Logger logger = Logger.getLogger(MqttClientImpl.class.getName());
 
@@ -66,6 +77,10 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>{
     private final Config config;
 
     private final AtomicInteger nextMessageId = new AtomicInteger(1);
+
+    protected final ConcurrentHashMap<Integer, MqttSubscribeMessage> waitingSubscriptions = new ConcurrentHashMap<>();
+
+    protected final ConcurrentHashMap<String, MqttSubscribeMessage> activeSubscriptions = new ConcurrentHashMap<>();
 
     public MqttClientImpl(MqttChannelInitializer mqttChannelInitializer, Config config) {
         this.mqttChannelInitializer = mqttChannelInitializer;
@@ -111,33 +126,65 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>{
         this.mqttChannelInitializer.getSubscriptionHandler().setSubscriptionFuture(subscribeFuture);
         MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.SUBSCRIBE, false, MqttQoS.AT_LEAST_ONCE, false, 0);
         MqttTopicSubscription subscription = new MqttTopicSubscription(topic, qos);
-        MqttMessageIdVariableHeader variableHeader = MqttMessageIdVariableHeader.from(1);
-        MqttSubscribePayload payload = new MqttSubscribePayload(Collections.singletonList(subscription));
+        int id = getNewMessageId();
+        MqttMessageIdVariableHeader variableHeader = MqttMessageIdVariableHeader.from(id);
+        MqttSubscribePayload payload = new MqttSubscribePayload(Arrays.asList(subscription));
+//        MqttSubscribePayload payload = new MqttSubscribePayload(Collections.singletonList(subscription));
         MqttSubscribeMessage message = new MqttSubscribeMessage(fixedHeader, variableHeader, payload);
+//        GenericFutureListener<? extends io.netty.util.concurrent.Future<? super MqttSubscriptionResult>> gl;
+        subscribeFuture.addListener((FutureListener) (Future f) -> {
+            try {
+                MqttSubscriptionResult result = (MqttSubscriptionResult) f.get();
+                MqttSubscribeMessage m = MqttClientImpl.this.waitingSubscriptions.get(result.getMessageId());
+                if (m == null) {
+                    return;
+                }
+                MqttClientImpl.this.activeSubscriptions.put(topic, m);
+                MqttClientImpl.this.waitingSubscriptions.remove(result.getMessageId());
+            } catch (InterruptedException ex) {
+                Logger.getLogger(MqttClientImpl.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (ExecutionException ex) {
+                Logger.getLogger(MqttClientImpl.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        });
+
+        this.waitingSubscriptions.put(id, message);
+
+        for (IntObjectMap.PrimitiveEntry<MqttSubscribeMessage> v : this.waitingSubscriptions.entries()) {
+            System.out.println(String.format("method subscribe. waitingSubscriptions. key %s value %s", v.key(), v.value()));
+        }
+
+        Iterator it = this.activeSubscriptions.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry) it.next();
+            System.out.println(pair.getKey() + " = " + pair.getValue());
+            it.remove(); // avoids a ConcurrentModificationException
+        }
+
         this.writeAndFlush(message);
 
         return subscribeFuture;
     }
 
     public void shutdown() {
-        if(this.channel != null){
+        if (this.channel != null) {
             this.channel.close();
         }
         this.workerGroup.shutdownGracefully();
 
     }
 
-    private ChannelFuture writeAndFlush(Object message){
-        if(this.channel == null){
+    private ChannelFuture writeAndFlush(Object message) {
+        if (this.channel == null) {
             return null;
         }
-        if(this.channel.isActive()){
+        if (this.channel.isActive()) {
             return this.channel.writeAndFlush(message);
         }
         return this.channel.newFailedFuture(new RuntimeException("Channel is closed"));
     }
 
-    private int getNewMessageId(){
+    private int getNewMessageId() {
         this.nextMessageId.compareAndSet(0xffff, 1);
         return this.nextMessageId.getAndIncrement();
     }

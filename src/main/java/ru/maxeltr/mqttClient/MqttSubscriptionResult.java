@@ -33,6 +33,8 @@ public class MqttSubscriptionResult {
 
 //    private final boolean success;
     private final int messageId;
+//    private final int grantedQoSLevels;
+//    private final int reasonCodes;
 //    private final ChannelFuture channelCloseFuture;
 //
 //    public MqttSubscriptionResult(boolean success, MqttSubscriptionReturnCode returnCode, ChannelFuture channelCloseFuture) {
@@ -49,7 +51,6 @@ public class MqttSubscriptionResult {
 //    public boolean isSuccess() {
 //        return this.success;
 //    }
-
     public int getMessageId() {
         return this.messageId;
     }

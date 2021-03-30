@@ -77,6 +77,8 @@ public class MqttSubscriptionHandler extends ChannelInboundHandlerAdapter {
 
     private void handleSubAck(Channel channel, MqttSubAckMessage message) {
 
+        
+
         for(MqttProperty p: message.idAndPropertiesVariableHeader().properties().listAll()) {
             System.out.println(String.format("propertyId %s, value %s", p.propertyId(), p.value()));
         }
