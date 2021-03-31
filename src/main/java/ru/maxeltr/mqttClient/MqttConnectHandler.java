@@ -89,21 +89,21 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
         MqttConnectVariableHeader connectVariableHeader = new MqttConnectVariableHeader(
                 this.config.getProperty("protocolName", ""),
                 Integer.parseInt(this.config.getProperty("protocolVersion", "")),
-                true,
-                true,
-                false,
-                0,
-                false,
-                false,
-                20,
+                Boolean.parseBoolean(this.config.getProperty("hasUserName", "false")), //Boolean.getBoolean("hasUserName"),
+                Boolean.parseBoolean(this.config.getProperty("hasPassword", "false")), //Boolean.getBoolean("hasPassword"),
+                Boolean.parseBoolean(this.config.getProperty("willRetain", "false")), //Boolean.getBoolean("willRetain"),
+                Integer.parseInt(this.config.getProperty("willQos", "")),
+                Boolean.parseBoolean(this.config.getProperty("willFlag", "false")), //Boolean.getBoolean("willFlag"),
+                Boolean.parseBoolean(this.config.getProperty("cleanSeesion", "false")), //Boolean.getBoolean("cleanSeesion"),
+                Integer.parseInt(this.config.getProperty("keepAliveTimer", "")),
                 MqttProperties.NO_PROPERTIES
         );
 
         MqttConnectPayload connectPayload = new MqttConnectPayload(
-                this.config.getProperty("clientId", ""),
+                this.config.getProperty("clientId", null),
                 MqttProperties.NO_PROPERTIES,
-                null,
-                null,
+                this.config.getProperty("willTopic", null),
+                this.config.getProperty("willMessage", "").getBytes(),
                 this.config.getProperty("userName", ""),
                 this.config.getProperty("password", "").getBytes()
         );
@@ -111,7 +111,7 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
         MqttConnectMessage connectMessage = new MqttConnectMessage(connectFixedHeader, connectVariableHeader, connectPayload);
         ctx.writeAndFlush(connectMessage);
         System.out.println("Sent CONNECT");
-
+        logger.log(Level.INFO, String.format("Sent connect message %s.", connectMessage));
     }
 
     private void handleConnack(Channel channel, MqttConnAckMessage message) {
@@ -122,7 +122,7 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
                 MqttConnectResult mqttResultSuccess = new MqttConnectResult(true, returnCode, channel.closeFuture());
                 this.publishConnAckEvent(mqttResultSuccess);
                 this.connectFuture.setSuccess(mqttResultSuccess);
-                logger.log(Level.INFO, String.format("Connection accepted %s.", returnCode));
+                logger.log(Level.INFO, String.format("Connection accepted %s.", message));
                 System.out.println(String.format("Connection accepted %s.", returnCode));
 
                 channel.flush();
@@ -136,7 +136,7 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
                 MqttConnectResult mqttResultRefused = new MqttConnectResult(false, returnCode, channel.closeFuture());
                 this.publishConnAckEvent(mqttResultRefused);
                 this.connectFuture.setSuccess(mqttResultRefused);
-                logger.log(Level.INFO, String.format("Connection refused %s.", returnCode));
+                logger.log(Level.INFO, String.format("Connection refused %s.", message));
                 System.out.println(String.format("Connection refused %s.", returnCode));
 
                 channel.close();

@@ -35,6 +35,7 @@ import io.netty.handler.codec.mqtt.MqttFixedHeader;
 import io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader;
 import io.netty.handler.codec.mqtt.MqttMessageType;
 import io.netty.handler.codec.mqtt.MqttQoS;
+import io.netty.handler.codec.mqtt.MqttSubAckMessage;
 import io.netty.handler.codec.mqtt.MqttSubscribeMessage;
 import io.netty.handler.codec.mqtt.MqttSubscribePayload;
 import io.netty.handler.codec.mqtt.MqttTopicSubscription;
@@ -48,8 +49,11 @@ import io.netty.util.concurrent.Promise;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
@@ -82,6 +86,8 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 
     protected final ConcurrentHashMap<String, MqttSubscribeMessage> activeSubscriptions = new ConcurrentHashMap<>();
 
+    protected final Set<String> activeTopics = new HashSet<>();
+
     public MqttClientImpl(MqttChannelInitializer mqttChannelInitializer, Config config) {
         this.mqttChannelInitializer = mqttChannelInitializer;
         this.config = config;
@@ -100,9 +106,6 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
      * @return
      */
     public Promise<MqttConnectResult> connect(String host, int port) {
-        logger.log(Level.INFO, String.format("Connect to %s via port %s", host, port));
-        System.out.println(String.format("Connect to %s via port %s.", host, port));
-
         this.workerGroup = new NioEventLoopGroup();
         Promise<MqttConnectResult> connectFuture = new DefaultPromise<>(this.workerGroup.next());
         this.mqttChannelInitializer.getConnectHandler().setConnectFuture(connectFuture);
@@ -115,14 +118,14 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
         ChannelFuture future = bootstrap.connect();
         future.addListener((ChannelFutureListener) f -> MqttClientImpl.this.channel = f.channel());
 
-        logger.log(Level.INFO, String.format("Client connected."));
-        System.out.println(String.format("Client connected."));
+        logger.log(Level.INFO, String.format("Connecting to %s via port %s.", host, port));
+        System.out.println(String.format("Connecting to %s via port %s.", host, port));
 
         return connectFuture;
     }
 
-    public Promise<MqttSubscriptionResult> subscribe(String topic, MqttQoS qos) {
-        Promise<MqttSubscriptionResult> subscribeFuture = new DefaultPromise<>(this.workerGroup.next());
+    public Promise<MqttSubAckMessage> subscribe(String topic, MqttQoS qos) {
+        Promise<MqttSubAckMessage> subscribeFuture = new DefaultPromise<>(this.workerGroup.next());
         this.mqttChannelInitializer.getSubscriptionHandler().setSubscriptionFuture(subscribeFuture);
         MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.SUBSCRIBE, false, MqttQoS.AT_LEAST_ONCE, false, 0);
         MqttTopicSubscription subscription = new MqttTopicSubscription(topic, qos);
@@ -134,32 +137,50 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 //        GenericFutureListener<? extends io.netty.util.concurrent.Future<? super MqttSubscriptionResult>> gl;
         subscribeFuture.addListener((FutureListener) (Future f) -> {
             try {
-                MqttSubscriptionResult result = (MqttSubscriptionResult) f.get();
-                MqttSubscribeMessage m = MqttClientImpl.this.waitingSubscriptions.get(result.getMessageId());
-                if (m == null) {
+                MqttSubAckMessage subAckMessage = (MqttSubAckMessage) f.get();
+                MqttSubscribeMessage subscribeMessage = MqttClientImpl.this.waitingSubscriptions.get(subAckMessage.variableHeader().messageId());
+                if (subscribeMessage == null) {
                     return;
                 }
-                MqttClientImpl.this.activeSubscriptions.put(topic, m);
-                MqttClientImpl.this.waitingSubscriptions.remove(result.getMessageId());
+
+                List<MqttTopicSubscription> topics = subscribeMessage.payload().topicSubscriptions();
+
+                List<Integer> grantedQoSLevels = subAckMessage.payload().grantedQoSLevels();
+
+                if (grantedQoSLevels.size() != topics.size()) {
+
+                } else {
+                    for (int i = 0; i < grantedQoSLevels.size(); i++) {
+
+                    }
+                }
+
+                for (int qoSLevel : grantedQoSLevels) {	//add
+//                    String topic = topics.get(i);
+
+                }
+
+                MqttClientImpl.this.activeSubscriptions.put(topic, subscribeMessage);
+                MqttClientImpl.this.waitingSubscriptions.remove(subAckMessage.variableHeader().messageId());
             } catch (InterruptedException ex) {
-                Logger.getLogger(MqttClientImpl.class.getName()).log(Level.SEVERE, null, ex);
+                logger.log(Level.SEVERE, null, ex);
             } catch (ExecutionException ex) {
-                Logger.getLogger(MqttClientImpl.class.getName()).log(Level.SEVERE, null, ex);
+                logger.log(Level.SEVERE, null, ex);
             }
         });
 
         this.waitingSubscriptions.put(id, message);
 
-        for (IntObjectMap.PrimitiveEntry<MqttSubscribeMessage> v : this.waitingSubscriptions.entries()) {
-            System.out.println(String.format("method subscribe. waitingSubscriptions. key %s value %s", v.key(), v.value()));
-        }
-
-        Iterator it = this.activeSubscriptions.entrySet().iterator();
-        while (it.hasNext()) {
-            Map.Entry pair = (Map.Entry) it.next();
-            System.out.println(pair.getKey() + " = " + pair.getValue());
-            it.remove(); // avoids a ConcurrentModificationException
-        }
+//        for (IntObjectMap.PrimitiveEntry<MqttSubscribeMessage> v : this.waitingSubscriptions.entries()) {
+//            System.out.println(String.format("method subscribe. waitingSubscriptions. key %s value %s", v.key(), v.value()));
+//        }
+//
+//        Iterator it = this.activeSubscriptions.entrySet().iterator();
+//        while (it.hasNext()) {
+//            Map.Entry pair = (Map.Entry) it.next();
+//            System.out.println(pair.getKey() + " = " + pair.getValue());
+//            it.remove(); // avoids a ConcurrentModificationException
+//        }
 
         this.writeAndFlush(message);
 

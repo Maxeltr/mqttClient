@@ -3,6 +3,7 @@ package ru.maxeltr.mqttClient;
 import io.netty.channel.ChannelFuture;
 import io.netty.handler.codec.mqtt.MqttConnectReturnCode;
 import io.netty.handler.codec.mqtt.MqttQoS;
+import io.netty.handler.codec.mqtt.MqttSubAckMessage;
 import io.netty.handler.codec.mqtt.MqttSubscribeMessage;
 import io.netty.util.collection.IntObjectMap;
 import io.netty.util.concurrent.Promise;
@@ -29,15 +30,15 @@ public class MqttClientApplication {
 
         System.out.println(connectResult.get().getReturnCode());
 
-        Promise<MqttSubscriptionResult> subResult = mqttClientImpl.subscribe("#", MqttQoS.AT_MOST_ONCE);
+        Promise<MqttSubAckMessage> subResult = mqttClientImpl.subscribe("#", MqttQoS.AT_MOST_ONCE);
 
-        MqttSubscriptionResult res = subResult.get();
-        System.out.println(String.format("MqttSubscriptionResult %s.%n", res.getMessageId()));
+        MqttSubAckMessage res = subResult.get();
+        System.out.println(String.format("MqttSubscriptionResult %s.%n", res.variableHeader().messageId()));
 
         Thread.sleep(2000);
-        for( IntObjectMap.PrimitiveEntry<MqttSubscribeMessage> v: mqttClientImpl.waitingSubscriptions.entries()) {
-            System.out.println(String.format("method main. waitingSubscriptions. key %s value %s", v.key(), v.value()));
-        }
+//        for( IntObjectMap.PrimitiveEntry<MqttSubscribeMessage> v: mqttClientImpl.waitingSubscriptions.entries()) {
+//            System.out.println(String.format("method main. waitingSubscriptions. key %s value %s", v.key(), v.value()));
+//        }
         Iterator it = mqttClientImpl.activeSubscriptions.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry pair = (Map.Entry) it.next();

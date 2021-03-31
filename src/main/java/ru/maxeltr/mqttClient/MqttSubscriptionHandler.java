@@ -52,7 +52,7 @@ public class MqttSubscriptionHandler extends ChannelInboundHandlerAdapter {
     @Autowired
     private ApplicationEventPublisher applicationEventPublisher;
 
-    private Promise<MqttSubscriptionResult> subscriptionFuture;
+    private Promise<MqttSubAckMessage> subscriptionFuture;
 
     public MqttSubscriptionHandler(Config config) {
         this.config = config;
@@ -77,38 +77,34 @@ public class MqttSubscriptionHandler extends ChannelInboundHandlerAdapter {
 
     private void handleSubAck(Channel channel, MqttSubAckMessage message) {
 
-        
-
-        for(MqttProperty p: message.idAndPropertiesVariableHeader().properties().listAll()) {
+        for (MqttProperty p : message.idAndPropertiesVariableHeader().properties().listAll()) {
             System.out.println(String.format("propertyId %s, value %s", p.propertyId(), p.value()));
         }
 
-        for(int p: message.payload().grantedQoSLevels()) {
+        for (int p : message.payload().grantedQoSLevels()) {
             System.out.println(String.format("grantedQoSLevels %s", p));
         }
 
-        for(int p: message.payload().reasonCodes()) {
+        for (int p : message.payload().reasonCodes()) {
             System.out.println(String.format("reasonCodes %s", p));
         }
 
-
-
-        MqttSubscriptionResult mqttResultSub = new MqttSubscriptionResult(message.variableHeader().messageId());
+//        MqttSubscriptionResult mqttResultSub = new MqttSubscriptionResult(message.variableHeader().messageId());
 //        this.publishSubAckEvent(mqttResultSub);
-        this.subscriptionFuture.setSuccess(mqttResultSub);
-        logger.log(Level.INFO, String.format("Connection accepted."));
-        System.out.println(String.format("Connection accepted %s.", message.variableHeader().messageId()));
+        this.subscriptionFuture.setSuccess(message);
+        
+        System.out.println(String.format("Received SUBACK for subscription with id %s.", message.variableHeader().messageId()));
+        logger.log(Level.INFO, String.format("Received SUBACK for subscription with id %s. Message is %s.", message.variableHeader().messageId(), message));
 
         channel.flush();
 
-
     }
 
-    public Promise<MqttSubscriptionResult> getSubscriptionFuture() {
+    public Promise<MqttSubAckMessage> getSubscriptionFuture() {
         return this.subscriptionFuture;
     }
 
-    public void setSubscriptionFuture(Promise<MqttSubscriptionResult> subscriptionFuture) {
+    public void setSubscriptionFuture(Promise<MqttSubAckMessage> subscriptionFuture) {
         this.subscriptionFuture = subscriptionFuture;
     }
 }

@@ -52,7 +52,7 @@ import ru.maxeltr.mqttClient.Config.Config;
  */
 public class MqttChannelHandler extends SimpleChannelInboundHandler<MqttMessage> {
 
-    private static final Logger logger = Logger.getLogger(MqttClientImpl.class.getName());
+    private static final Logger logger = Logger.getLogger(MqttChannelHandler.class.getName());
 
     private final Config config;
 
@@ -66,17 +66,10 @@ public class MqttChannelHandler extends SimpleChannelInboundHandler<MqttMessage>
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, MqttMessage msg) throws Exception {
         switch (msg.fixedHeader().messageType()) {
-            case SUBACK:
-                System.out.println(String.format("SUBACK.%n"));
-                break;
             case PUBLISH:
                 MqttPublishMessage message = (MqttPublishMessage) msg;
 
-
                 System.out.println(String.format(message.variableHeader().topicName() + " " + message.payload().toString(Charset.forName("UTF-8"))));
-                break;
-            case UNSUBACK:
-
                 break;
             case PUBACK:
 
@@ -88,6 +81,11 @@ public class MqttChannelHandler extends SimpleChannelInboundHandler<MqttMessage>
 
                 break;
             case PUBCOMP:
+
+                break;
+            case DISCONNECT:
+                System.out.println(String.format("Received DISCONNECT."));
+                logger.log(Level.INFO, String.format("Received disconnect message %s.", msg));
 
                 break;
         }
