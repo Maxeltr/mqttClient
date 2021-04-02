@@ -23,6 +23,7 @@
  */
 package ru.maxeltr.mqttClient;
 
+import io.netty.handler.codec.mqtt.MqttConnAckMessage;
 import org.springframework.context.ApplicationEvent;
 
 /**
@@ -31,9 +32,9 @@ import org.springframework.context.ApplicationEvent;
  */
 public class ConnAckEvent extends ApplicationEvent {
     private final String message;
-    private final MqttConnectResult connectResult;
+    private final MqttConnAckMessage connectResult;
 
-    public ConnAckEvent(Object source, String message, MqttConnectResult  connectResult) {
+    public ConnAckEvent(Object source, String message, MqttConnAckMessage  connectResult) {
         super(source);
         this.message = message;
         this.connectResult = connectResult;
@@ -42,7 +43,7 @@ public class ConnAckEvent extends ApplicationEvent {
         return message;
     }
 
-    public MqttConnectResult  getConnectResult() {
+    public MqttConnAckMessage  getConnectResult() {
         return connectResult;
     }
 }

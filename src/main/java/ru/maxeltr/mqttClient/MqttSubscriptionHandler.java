@@ -77,23 +77,10 @@ public class MqttSubscriptionHandler extends ChannelInboundHandlerAdapter {
 
     private void handleSubAck(Channel channel, MqttSubAckMessage message) {
 
-        for (MqttProperty p : message.idAndPropertiesVariableHeader().properties().listAll()) {
-            System.out.println(String.format("propertyId %s, value %s", p.propertyId(), p.value()));
-        }
-
-        for (int p : message.payload().grantedQoSLevels()) {
-            System.out.println(String.format("grantedQoSLevels %s", p));
-        }
-
-        for (int p : message.payload().reasonCodes()) {
-            System.out.println(String.format("reasonCodes %s", p));
-        }
-
-//        MqttSubscriptionResult mqttResultSub = new MqttSubscriptionResult(message.variableHeader().messageId());
 //        this.publishSubAckEvent(mqttResultSub);
         this.subscriptionFuture.setSuccess(message);
-        
-        System.out.println(String.format("Received SUBACK for subscription with id %s.", message.variableHeader().messageId()));
+
+        System.out.println(String.format("Received SUBACK for subscription with id %s. Message is %s.", message.variableHeader().messageId(), message));
         logger.log(Level.INFO, String.format("Received SUBACK for subscription with id %s. Message is %s.", message.variableHeader().messageId(), message));
 
         channel.flush();

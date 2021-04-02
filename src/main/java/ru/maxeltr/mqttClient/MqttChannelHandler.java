@@ -83,11 +83,7 @@ public class MqttChannelHandler extends SimpleChannelInboundHandler<MqttMessage>
             case PUBCOMP:
 
                 break;
-            case DISCONNECT:
-                System.out.println(String.format("Received DISCONNECT."));
-                logger.log(Level.INFO, String.format("Received disconnect message %s.", msg));
-
-                break;
+            
         }
     }
 }

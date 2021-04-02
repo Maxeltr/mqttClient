@@ -59,7 +59,7 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
     @Autowired
     private ApplicationEventPublisher applicationEventPublisher;
 
-    private Promise<MqttConnectResult> connectFuture;
+    private Promise<MqttConnAckMessage> connectFuture;
 
     public MqttConnectHandler(Config config) {
         this.config = config;
@@ -75,55 +75,61 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
         MqttMessage message = (MqttMessage) msg;
         if (message.fixedHeader().messageType() == MqttMessageType.CONNACK) {
             handleConnack(ctx.channel(), (MqttConnAckMessage) message);
+        } else if (message.fixedHeader().messageType() == MqttMessageType.DISCONNECT) {
+            System.out.println(String.format("Received DISCONNECT %s. Close channel.", msg));
+            logger.log(Level.INFO, String.format("Received disconnect message %s. Close channel.", msg));
+            ctx.close();
         } else {
             ctx.fireChannelRead(ReferenceCountUtil.retain(msg));
         }
-    }
+        }
 
-    @Override
-    public void channelActive(ChannelHandlerContext ctx) throws Exception {
-        super.channelActive(ctx);
+        @Override
+        public void channelActive
+        (ChannelHandlerContext ctx) throws Exception {
+            super.channelActive(ctx);
 
-        MqttFixedHeader connectFixedHeader = new MqttFixedHeader(MqttMessageType.CONNECT, false, MqttQoS.AT_MOST_ONCE, false, 0);
+            MqttFixedHeader connectFixedHeader = new MqttFixedHeader(MqttMessageType.CONNECT, false, MqttQoS.AT_MOST_ONCE, false, 0);
 
-        MqttConnectVariableHeader connectVariableHeader = new MqttConnectVariableHeader(
-                this.config.getProperty("protocolName", ""),
-                Integer.parseInt(this.config.getProperty("protocolVersion", "")),
-                Boolean.parseBoolean(this.config.getProperty("hasUserName", "false")), //Boolean.getBoolean("hasUserName"),
-                Boolean.parseBoolean(this.config.getProperty("hasPassword", "false")), //Boolean.getBoolean("hasPassword"),
-                Boolean.parseBoolean(this.config.getProperty("willRetain", "false")), //Boolean.getBoolean("willRetain"),
-                Integer.parseInt(this.config.getProperty("willQos", "")),
-                Boolean.parseBoolean(this.config.getProperty("willFlag", "false")), //Boolean.getBoolean("willFlag"),
-                Boolean.parseBoolean(this.config.getProperty("cleanSeesion", "false")), //Boolean.getBoolean("cleanSeesion"),
-                Integer.parseInt(this.config.getProperty("keepAliveTimer", "")),
-                MqttProperties.NO_PROPERTIES
-        );
+            MqttConnectVariableHeader connectVariableHeader = new MqttConnectVariableHeader(
+                    this.config.getProperty("protocolName", ""),
+                    Integer.parseInt(this.config.getProperty("protocolVersion", "")),
+                    Boolean.parseBoolean(this.config.getProperty("hasUserName", "true")), //Boolean.getBoolean("hasUserName"),
+                    Boolean.parseBoolean(this.config.getProperty("hasPassword", "true")), //Boolean.getBoolean("hasPassword"),
+                    Boolean.parseBoolean(this.config.getProperty("willRetain", "false")), //Boolean.getBoolean("willRetain"),
+                    Integer.parseInt(this.config.getProperty("willQos", "0")),
+                    Boolean.parseBoolean(this.config.getProperty("willFlag", "false")), //Boolean.getBoolean("willFlag"),
+                    Boolean.parseBoolean(this.config.getProperty("cleanSeesion", "true")), //Boolean.getBoolean("cleanSeesion"),
+                    Integer.parseInt(this.config.getProperty("keepAliveTimer", "20")),
+                    MqttProperties.NO_PROPERTIES
+            );
 
-        MqttConnectPayload connectPayload = new MqttConnectPayload(
-                this.config.getProperty("clientId", null),
-                MqttProperties.NO_PROPERTIES,
-                this.config.getProperty("willTopic", null),
-                this.config.getProperty("willMessage", "").getBytes(),
-                this.config.getProperty("userName", ""),
-                this.config.getProperty("password", "").getBytes()
-        );
+            MqttConnectPayload connectPayload = new MqttConnectPayload(
+                    this.config.getProperty("clientId", null),
+                    MqttProperties.NO_PROPERTIES,
+                    this.config.getProperty("willTopic", null),
+                    this.config.getProperty("willMessage", "").getBytes(),
+                    this.config.getProperty("userName", ""),
+                    this.config.getProperty("password", "").getBytes()
+            );
 
-        MqttConnectMessage connectMessage = new MqttConnectMessage(connectFixedHeader, connectVariableHeader, connectPayload);
-        ctx.writeAndFlush(connectMessage);
-        System.out.println("Sent CONNECT");
-        logger.log(Level.INFO, String.format("Sent connect message %s.", connectMessage));
-    }
+            MqttConnectMessage connectMessage = new MqttConnectMessage(connectFixedHeader, connectVariableHeader, connectPayload);
+            ctx.writeAndFlush(connectMessage);
+            System.out.println(String.format("Sent connect message %s.", connectMessage));
+            logger.log(Level.INFO, String.format("Sent connect message %s.", connectMessage));
+        }
+
+
 
     private void handleConnack(Channel channel, MqttConnAckMessage message) {
         MqttConnectReturnCode returnCode = message.variableHeader().connectReturnCode();
 
         switch (message.variableHeader().connectReturnCode()) {
             case CONNECTION_ACCEPTED:
-                MqttConnectResult mqttResultSuccess = new MqttConnectResult(true, returnCode, channel.closeFuture());
-                this.publishConnAckEvent(mqttResultSuccess);
-                this.connectFuture.setSuccess(mqttResultSuccess);
-                logger.log(Level.INFO, String.format("Connection accepted %s.", message));
-                System.out.println(String.format("Connection accepted %s.", returnCode));
+                this.publishConnAckEvent(message);
+                this.connectFuture.setSuccess(message);
+                logger.log(Level.INFO, String.format("Received CONNACK message. Connection accepted %s.", message));
+                System.out.println(String.format("Received CONNACK message. Connection accepted %s.", message));
 
                 channel.flush();
                 break;
@@ -133,11 +139,10 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
             case CONNECTION_REFUSED_NOT_AUTHORIZED:
             case CONNECTION_REFUSED_SERVER_UNAVAILABLE:
             case CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION:
-                MqttConnectResult mqttResultRefused = new MqttConnectResult(false, returnCode, channel.closeFuture());
-                this.publishConnAckEvent(mqttResultRefused);
-                this.connectFuture.setSuccess(mqttResultRefused);
-                logger.log(Level.INFO, String.format("Connection refused %s.", message));
-                System.out.println(String.format("Connection refused %s.", returnCode));
+                this.publishConnAckEvent(message);
+                this.connectFuture.setSuccess(message);
+                logger.log(Level.INFO, String.format("Received CONNACK message. Connection refused %s.", message));
+                System.out.println(String.format("Received CONNACK message. Connection refused %s.", message));
 
                 channel.close();
                 // Don't start reconnect logic here
@@ -146,16 +151,16 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
 
     }
 
-    private void publishConnAckEvent(MqttConnectResult mqttConnectResult) {
-        applicationEventPublisher.publishEvent(new ConnAckEvent(this, mqttConnectResult.getReturnCode().name(), mqttConnectResult));
+    private void publishConnAckEvent(MqttConnAckMessage connAckMessage) {
+        applicationEventPublisher.publishEvent(new ConnAckEvent(this, connAckMessage.variableHeader().connectReturnCode().name(), connAckMessage));
 
     }
 
-    public Promise<MqttConnectResult> getConnectFuture() {
+    public Promise<MqttConnAckMessage> getConnectFuture() {
         return this.connectFuture;
     }
 
-    public void setConnectFuture(Promise<MqttConnectResult> connectFuture) {
+    public void setConnectFuture(Promise<MqttConnAckMessage> connectFuture) {
         this.connectFuture = connectFuture;
     }
 }
