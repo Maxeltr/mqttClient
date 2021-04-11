@@ -56,12 +56,13 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
 
     private final Config config;
 
+    private final PromiseBroker promiseBroker;
+
     @Autowired
     private ApplicationEventPublisher applicationEventPublisher;
 
-    private Promise<MqttConnAckMessage> connectFuture;
-
-    public MqttConnectHandler(Config config) {
+    public MqttConnectHandler(PromiseBroker promiseBroker, Config config) {
+        this.promiseBroker = promiseBroker;
         this.config = config;
     }
 
@@ -127,7 +128,7 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
         switch (message.variableHeader().connectReturnCode()) {
             case CONNECTION_ACCEPTED:
                 this.publishConnAckEvent(message);
-                this.connectFuture.setSuccess(message);
+                this.promiseBroker.getConnectFuture().setSuccess(message);
                 logger.log(Level.INFO, String.format("Received CONNACK message. Connection accepted %s.", message));
                 System.out.println(String.format("Received CONNACK message. Connection accepted %s.", message));
 
@@ -140,7 +141,7 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
             case CONNECTION_REFUSED_SERVER_UNAVAILABLE:
             case CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION:
                 this.publishConnAckEvent(message);
-                this.connectFuture.setSuccess(message);
+                this.promiseBroker.getConnectFuture().setSuccess(message);
                 logger.log(Level.INFO, String.format("Received CONNACK message. Connection refused %s.", message));
                 System.out.println(String.format("Received CONNACK message. Connection refused %s.", message));
 
@@ -156,11 +157,4 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
 
     }
 
-    public Promise<MqttConnAckMessage> getConnectFuture() {
-        return this.connectFuture;
-    }
-
-    public void setConnectFuture(Promise<MqttConnAckMessage> connectFuture) {
-        this.connectFuture = connectFuture;
-    }
 }

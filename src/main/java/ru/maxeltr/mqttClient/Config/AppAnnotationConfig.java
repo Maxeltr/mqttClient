@@ -24,25 +24,24 @@
 package ru.maxeltr.mqttClient.Config;
 
 import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelInitializer;
 import io.netty.handler.codec.mqtt.MqttDecoder;
 import io.netty.handler.codec.mqtt.MqttEncoder;
 import io.netty.handler.timeout.IdleStateHandler;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.LogManager;
-import java.util.logging.Logger;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ApplicationEventMulticaster;
 import org.springframework.context.event.SimpleApplicationEventMulticaster;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
-import ru.maxeltr.mqttClient.MqttChannelHandler;
 import ru.maxeltr.mqttClient.MqttChannelInitializer;
 import ru.maxeltr.mqttClient.MqttClientImpl;
 import ru.maxeltr.mqttClient.MqttConnectHandler;
 import ru.maxeltr.mqttClient.MqttPingHandler;
+import ru.maxeltr.mqttClient.MqttPublishHandler;
 import ru.maxeltr.mqttClient.MqttSubscriptionHandler;
+import ru.maxeltr.mqttClient.PromiseBroker;
 
 /**
  *
@@ -68,6 +67,11 @@ public class AppAnnotationConfig {
     }
 
     @Bean
+    public PromiseBroker promiseBroker() {
+        return new PromiseBroker();
+    }
+
+    @Bean
     public MqttDecoder mqttDecoder() {
         return new MqttDecoder();
     }
@@ -88,18 +92,18 @@ public class AppAnnotationConfig {
     }
 
     @Bean
-    public MqttChannelHandler mqttChannelHandler(Config config) {
-        return new MqttChannelHandler(config);
+    public MqttPublishHandler mqttPublishHandler(PromiseBroker promiseBroker, Config config) {
+        return new MqttPublishHandler(promiseBroker, config);
     }
 
     @Bean
-    public MqttConnectHandler mqttConnectHandler(Config config) {
-        return new MqttConnectHandler(config);
+    public MqttConnectHandler mqttConnectHandler(PromiseBroker promiseBroker, Config config) {
+        return new MqttConnectHandler(promiseBroker, config);
     }
 
     @Bean
-    public MqttSubscriptionHandler mqttSubscriptionHandler(Config config) {
-        return new MqttSubscriptionHandler(config);
+    public MqttSubscriptionHandler mqttSubscriptionHandler(PromiseBroker promiseBroker, Config config) {
+        return new MqttSubscriptionHandler(promiseBroker, config);
     }
 
     @Bean
@@ -110,14 +114,14 @@ public class AppAnnotationConfig {
             ChannelHandler mqttPingHandler,
             MqttConnectHandler mqttConnectHandler,
             MqttSubscriptionHandler mqttSubscriptionHandler,
-            ChannelHandler mqttChannelHandler
+            ChannelHandler mqttPublishHandler
     ) {
-        return new MqttChannelInitializer(mqttDecoder, mqttEncoder, idleStateHandler, mqttPingHandler, mqttConnectHandler, mqttSubscriptionHandler, mqttChannelHandler);
+        return new MqttChannelInitializer(mqttDecoder, mqttEncoder, idleStateHandler, mqttPingHandler, mqttConnectHandler, mqttSubscriptionHandler, mqttPublishHandler);
     }
 
     @Bean
-    public MqttClientImpl mqttClientImpl(MqttChannelInitializer mqttChannelInitializer, Config config) {
-        return new MqttClientImpl(mqttChannelInitializer, config);
+    public MqttClientImpl mqttClientImpl(MqttChannelInitializer mqttChannelInitializer, Config config, PromiseBroker promiseBroker) {
+        return new MqttClientImpl(mqttChannelInitializer, config, promiseBroker);
     }
 
     /**

@@ -1,0 +1,191 @@
+/*
+ * The MIT License
+ *
+ * Copyright 2021 Maxim Eltratov <<Maxim.Eltratov@ya.ru>>.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+package ru.maxeltr.mqttClient;
+
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.handler.codec.mqtt.MqttFixedHeader;
+import io.netty.handler.codec.mqtt.MqttMessage;
+import io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader;
+import io.netty.handler.codec.mqtt.MqttMessageType;
+import io.netty.handler.codec.mqtt.MqttPubAckMessage;
+import io.netty.handler.codec.mqtt.MqttPublishMessage;
+import io.netty.handler.codec.mqtt.MqttQoS;
+import io.netty.util.concurrent.Promise;
+import java.nio.charset.Charset;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
+import ru.maxeltr.mqttClient.Config.Config;
+
+/**
+ *
+ * @author Maxim Eltratov <<Maxim.Eltratov@ya.ru>>
+ */
+public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage> {
+
+    private static final Logger logger = Logger.getLogger(MqttPublishHandler.class.getName());
+
+    private final Config config;
+
+    private final PromiseBroker promiseBroker;
+
+    private final ConcurrentHashMap<Integer, MqttPublishMessage> pendingPubRel = new ConcurrentHashMap<>();
+
+    private final ConcurrentHashMap<Integer, MqttMessage> pendingPubComp = new ConcurrentHashMap<>();
+
+    @Autowired
+    private ApplicationEventPublisher applicationEventPublisher;
+
+    public MqttPublishHandler(PromiseBroker promiseBroker, Config config) {
+        this.promiseBroker = promiseBroker;
+        this.config = config;
+    }
+
+    @Override
+    protected void channelRead0(ChannelHandlerContext ctx, MqttMessage msg) throws Exception {
+        switch (msg.fixedHeader().messageType()) {
+            case PUBLISH:
+                MqttPublishMessage pubMessage = (MqttPublishMessage) msg;
+                System.out.println(String.format("Received PUBLISH for message with id %s. Message is %s.", pubMessage.variableHeader().messageId(), pubMessage));
+                logger.log(Level.INFO, String.format("Received PUBLISH for message with id %s. Message is %s.", pubMessage.variableHeader().messageId(), pubMessage));
+                this.handlePublish(ctx.channel(), (MqttPublishMessage) pubMessage);
+                break;
+            case PUBACK:
+                MqttPubAckMessage pubAckmessage = (MqttPubAckMessage) msg;
+                System.out.println(String.format("Received PUBACK for message with id %s. Message is %s.", pubAckmessage.variableHeader().messageId(), pubAckmessage));
+                logger.log(Level.INFO, String.format("Received PUBACK for message with id %s. Message is %s.", pubAckmessage.variableHeader().messageId(), pubAckmessage));
+                Promise future = (Promise<MqttPublishMessage>) this.promiseBroker.get(pubAckmessage.variableHeader().messageId());
+                future.setSuccess(pubAckmessage);
+                break;
+            case PUBREC:
+                System.out.println(String.format("Received PUBREC. Message is %s.", msg));
+                logger.log(Level.INFO, String.format("Received PUBREC. Message is %s.", msg));
+                this.handlePubrec(ctx.channel(), msg);
+
+                break;
+            case PUBREL:
+                System.out.println(String.format("Received PUBREL. Message is %s.", msg));
+                logger.log(Level.INFO, String.format("Received PUBREL. Message is %s.", msg));
+                this.handlePubrel(ctx.channel(), msg);
+                break;
+            case PUBCOMP:
+                System.out.println(String.format("Received PUBCOMP. Message is %s.", msg));
+                logger.log(Level.INFO, String.format("Received PUBCOMP. Message is %s.", msg));
+                this.handlePubcomp(ctx.channel(), msg);
+                break;
+
+        }
+    }
+
+    private void handlePubcomp(Channel channel, MqttMessage message) {
+        MqttMessageIdVariableHeader variableHeader = (MqttMessageIdVariableHeader) message.variableHeader();
+        MqttMessage pubRecMessage = this.pendingPubComp.get(variableHeader.messageId());
+        if (pubRecMessage == null) {
+            logger.log(Level.INFO, String.format("Collection of waiting confirmation publish QoS2 messages returned null instead saved pubRecMessage"));
+            System.out.println(String.format("Collection of waiting confirmation publish QoS2 messages returned null instead saved pubRecMessage"));
+        } else {
+            this.pendingPubComp.remove(variableHeader.messageId());
+        }
+    }
+
+    private void handlePubrec(Channel channel, MqttMessage message) {
+        MqttMessageIdVariableHeader variableHeader = (MqttMessageIdVariableHeader) message.variableHeader();
+        Promise future = (Promise<MqttMessage>) this.promiseBroker.get(variableHeader.messageId());
+        future.setSuccess(message);
+        this.pendingPubComp.put(variableHeader.messageId(), message);
+
+        MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.PUBREL, false, MqttQoS.AT_LEAST_ONCE, false, 0);
+        MqttMessage pubrelMessage = new MqttMessage(fixedHeader, variableHeader);
+
+        channel.writeAndFlush(pubrelMessage);
+
+        System.out.println(String.format("Sent PUBREL message %s.", message));
+        logger.log(Level.INFO, String.format("Sent PUBREL message %s.", message));
+    }
+
+    private void handlePubrel(Channel channel, MqttMessage message) {
+        MqttMessageIdVariableHeader variableHeader = (MqttMessageIdVariableHeader) message.variableHeader();
+        MqttPublishMessage publishMessage = this.pendingPubRel.get(variableHeader.messageId());
+        if (publishMessage == null) {
+            logger.log(Level.INFO, String.format("Collection of waiting confirmation publish QoS2 messages returned null instead saved publishMessage"));
+            System.out.println(String.format("Collection of waiting confirmation publish QoS2 messages returned null instead saved publishMessage"));
+        } else {
+            this.pendingPubRel.remove(variableHeader.messageId());
+//            publishMessage.release();	//???
+        }
+
+        MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.PUBCOMP, false, MqttQoS.AT_MOST_ONCE, false, 0);
+
+        channel.writeAndFlush(new MqttMessage(fixedHeader, variableHeader));
+
+        System.out.println(String.format("Sent PUBCOMP message %s.", message));
+        logger.log(Level.INFO, String.format("Sent PUBCOMP message %s.", message));
+
+        //TODO handle publish Message
+    }
+
+    private void handlePublish(Channel channel, MqttPublishMessage message) {
+        MqttFixedHeader fixedHeader;
+        MqttMessageIdVariableHeader variableHeader;
+        switch (message.fixedHeader().qosLevel()) {
+            case AT_MOST_ONCE:
+//                System.out.println(String.format(message.variableHeader().topicName() + " " + message.payload().toString(Charset.forName("UTF-8"))));
+                System.out.println(String.format("handlePublish: AT_MOST_ONCE. topicName - " + message.variableHeader().topicName() + " payload - " + message.payload().toString(Charset.forName("UTF-8"))));
+                //TODO handle publish Message
+                break;
+            case AT_LEAST_ONCE:
+                System.out.println(String.format("handlePublish: AT_LEAST_ONCE. topicName - " + message.variableHeader().topicName() + " payload - " + message.payload().toString(Charset.forName("UTF-8"))));
+
+                fixedHeader = new MqttFixedHeader(MqttMessageType.PUBACK, false, MqttQoS.AT_MOST_ONCE, false, 0);
+                variableHeader = MqttMessageIdVariableHeader.from(message.variableHeader().messageId());
+
+                channel.writeAndFlush(new MqttPubAckMessage(fixedHeader, variableHeader));
+
+                System.out.println(String.format("Sent PUBACK message %s.", message));
+                logger.log(Level.INFO, String.format("Sent PUBACK message %s.", message));
+                //TODO handle publish Message
+                break;
+            case EXACTLY_ONCE:
+                System.out.println(String.format("handlePublish: EXACTLY_ONCE. topicName - " + message.variableHeader().topicName() + " payload - " + message.payload().toString(Charset.forName("UTF-8"))));
+
+                this.pendingPubRel.put(message.variableHeader().messageId(), message);
+
+                fixedHeader = new MqttFixedHeader(MqttMessageType.PUBREC, false, MqttQoS.AT_MOST_ONCE, false, 0);
+                variableHeader = MqttMessageIdVariableHeader.from(message.variableHeader().messageId());
+                MqttMessage pubrecMessage = new MqttMessage(fixedHeader, variableHeader);
+
+//                message.payload().retain();	//???
+
+                channel.writeAndFlush(pubrecMessage);
+
+                System.out.println(String.format("Sent PUBREC message %s.", message));
+                logger.log(Level.INFO, String.format("Sent PUBREC message %s.", message));
+                break;
+        }
+    }
+}

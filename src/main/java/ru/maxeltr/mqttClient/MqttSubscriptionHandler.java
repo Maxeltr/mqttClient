@@ -49,12 +49,13 @@ public class MqttSubscriptionHandler extends ChannelInboundHandlerAdapter {
 
     private final Config config;
 
+    private final PromiseBroker promiseBroker;
+
     @Autowired
     private ApplicationEventPublisher applicationEventPublisher;
 
-    private Promise<MqttSubAckMessage> subscriptionFuture;
-
-    public MqttSubscriptionHandler(Config config) {
+    public MqttSubscriptionHandler(PromiseBroker promiseBroker, Config config) {
+        this.promiseBroker = promiseBroker;
         this.config = config;
     }
 
@@ -78,8 +79,8 @@ public class MqttSubscriptionHandler extends ChannelInboundHandlerAdapter {
     private void handleSubAck(Channel channel, MqttSubAckMessage message) {
 
 //        this.publishSubAckEvent(mqttResultSub);
-        this.subscriptionFuture.setSuccess(message);
-
+        Promise<MqttSubAckMessage> future = (Promise<MqttSubAckMessage>) this.promiseBroker.get(message.variableHeader().messageId());
+        future.setSuccess(message);
         System.out.println(String.format("Received SUBACK for subscription with id %s. Message is %s.", message.variableHeader().messageId(), message));
         logger.log(Level.INFO, String.format("Received SUBACK for subscription with id %s. Message is %s.", message.variableHeader().messageId(), message));
 
@@ -87,11 +88,4 @@ public class MqttSubscriptionHandler extends ChannelInboundHandlerAdapter {
 
     }
 
-    public Promise<MqttSubAckMessage> getSubscriptionFuture() {
-        return this.subscriptionFuture;
-    }
-
-    public void setSubscriptionFuture(Promise<MqttSubAckMessage> subscriptionFuture) {
-        this.subscriptionFuture = subscriptionFuture;
-    }
 }

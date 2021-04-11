@@ -24,6 +24,7 @@
 package ru.maxeltr.mqttClient;
 
 import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -36,6 +37,9 @@ import io.netty.handler.codec.mqtt.MqttMessage;
 import io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader;
 import io.netty.handler.codec.mqtt.MqttMessageType;
 import io.netty.handler.codec.mqtt.MqttProperties;
+import io.netty.handler.codec.mqtt.MqttPubAckMessage;
+import io.netty.handler.codec.mqtt.MqttPublishMessage;
+import io.netty.handler.codec.mqtt.MqttPublishVariableHeader;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import io.netty.handler.codec.mqtt.MqttReasonCodeAndPropertiesVariableHeader;
 import io.netty.handler.codec.mqtt.MqttSubAckMessage;
@@ -75,7 +79,11 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 
     private EventLoopGroup workerGroup;
 
+    private final Bootstrap bootstrap;
+
     private final Config config;
+
+    private final PromiseBroker promiseBroker;
 
     private final AtomicInteger nextMessageId = new AtomicInteger(1);
 
@@ -85,9 +93,21 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 
     private final ConcurrentHashMap<String, MqttTopicSubscription> activeTopics = new ConcurrentHashMap<>();
 
-    public MqttClientImpl(MqttChannelInitializer mqttChannelInitializer, Config config) {
+    private final ConcurrentHashMap<Integer, MqttPublishMessage> pendingPubRec = new ConcurrentHashMap<>();
+
+    private final ConcurrentHashMap<Integer, MqttUnsubscribeMessage> pendingPubComp = new ConcurrentHashMap<>();
+
+    private final ConcurrentHashMap<Integer, MqttPublishMessage> pendingPubAck = new ConcurrentHashMap<>();
+
+    public MqttClientImpl(MqttChannelInitializer mqttChannelInitializer, Config config, PromiseBroker promiseBroker) {
         this.mqttChannelInitializer = mqttChannelInitializer;
         this.config = config;
+        this.workerGroup = new NioEventLoopGroup();
+        this.bootstrap = new Bootstrap();
+        bootstrap.group(this.workerGroup);
+        bootstrap.channel(NioSocketChannel.class);
+        bootstrap.handler(this.mqttChannelInitializer);
+        this.promiseBroker = promiseBroker;
     }
 
     @Override
@@ -103,14 +123,9 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
      * @return
      */
     public Promise<MqttConnAckMessage> connect(String host, int port) {
-        this.workerGroup = new NioEventLoopGroup();
         Promise<MqttConnAckMessage> connectFuture = new DefaultPromise<>(this.workerGroup.next());
-        this.mqttChannelInitializer.getConnectHandler().setConnectFuture(connectFuture);
-        Bootstrap bootstrap = new Bootstrap();
-        bootstrap.group(this.workerGroup);
-        bootstrap.channel(NioSocketChannel.class);
-        bootstrap.remoteAddress(host, port);
-        bootstrap.handler(this.mqttChannelInitializer);
+        this.promiseBroker.setConnectFuture(connectFuture);
+        this.bootstrap.remoteAddress(host, port);
 
         ChannelFuture future = bootstrap.connect();
         future.addListener((ChannelFutureListener) f -> MqttClientImpl.this.channel = f.channel());
@@ -123,7 +138,6 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 
     public Promise<MqttSubAckMessage> subscribe(Map<String, Integer> topicsAndQos) {
         Promise<MqttSubAckMessage> subscribeFuture = new DefaultPromise<>(this.workerGroup.next());
-        this.mqttChannelInitializer.getSubscriptionHandler().setSubscriptionFuture(subscribeFuture);
         MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.SUBSCRIBE, false, MqttQoS.AT_LEAST_ONCE, false, 0);
 
         List<MqttTopicSubscription> subscriptions = new ArrayList<>();
@@ -133,13 +147,11 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 
         });
 
-//        MqttTopicSubscription subscription = new MqttTopicSubscription(topic, qos);
         int id = getNewMessageId();
         MqttMessageIdVariableHeader variableHeader = MqttMessageIdVariableHeader.from(id);
         MqttSubscribePayload payload = new MqttSubscribePayload(subscriptions);
-//        MqttSubscribePayload payload = new MqttSubscribePayload(Collections.singletonList(subscription));
         MqttSubscribeMessage message = new MqttSubscribeMessage(fixedHeader, variableHeader, payload);
-//        GenericFutureListener<? extends io.netty.util.concurrent.Future<? super MqttSubscriptionResult>> gl;
+        this.promiseBroker.add(id, subscribeFuture);
         subscribeFuture.addListener((FutureListener) (Future f) -> {
             try {
                 MqttSubAckMessage subAckMessage = (MqttSubAckMessage) f.get();
@@ -191,9 +203,61 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 //        }
         this.writeAndFlush(message);
         System.out.println(String.format("Sent subscribe message %s.", message));
-            logger.log(Level.INFO, String.format("Sent subscribe message %s.", message));
+        logger.log(Level.INFO, String.format("Sent subscribe message %s.", message));
 
         return subscribeFuture;
+    }
+
+    public Promise<?> publish(String topic, ByteBuf payload, MqttQoS qos, boolean retain) {
+        MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.PUBLISH, false, qos, retain, 0);
+        int id = getNewMessageId();
+        MqttPublishVariableHeader variableHeader = new MqttPublishVariableHeader(topic, id);
+        MqttPublishMessage message = new MqttPublishMessage(fixedHeader, variableHeader, payload);
+
+        Promise<?> publishFuture = new DefaultPromise<>(this.workerGroup.next());
+        if (qos == MqttQoS.AT_MOST_ONCE) {
+            publishFuture.setSuccess(null);
+
+        } else if (qos == MqttQoS.AT_LEAST_ONCE) {
+            this.promiseBroker.add(id, publishFuture);
+            publishFuture.addListener((FutureListener) (Future f) -> {
+                MqttPubAckMessage pubAckMessage = (MqttPubAckMessage) f.get();
+                MqttPublishMessage publishMessage = MqttClientImpl.this.pendingPubAck.get(pubAckMessage.variableHeader().messageId());
+                if (publishMessage == null) {
+                    logger.log(Level.INFO, String.format("Collection of waiting confirmation publish QoS1 messages returned null instead publishMessage"));
+                    System.out.println(String.format("Collection of waiting confirmation publish QoS1 messages returned null instead publishMessage"));
+                    return;
+                }
+                this.pendingPubAck.remove(pubAckMessage.variableHeader().messageId());
+//                publishMessage.release();	//???
+            });
+            this.pendingPubAck.put(id, message);
+
+        } else if (qos == MqttQoS.EXACTLY_ONCE) {
+            this.promiseBroker.add(id, publishFuture);
+            publishFuture.addListener((FutureListener) (Future f) -> {
+                MqttMessage pubRecMessage = (MqttMessage) f.get();
+                MqttMessageIdVariableHeader idVariableHeader = (MqttMessageIdVariableHeader) pubRecMessage.variableHeader();
+                MqttPublishMessage publishMessage = MqttClientImpl.this.pendingPubRec.get(idVariableHeader.messageId());
+                if (publishMessage == null) {
+                    logger.log(Level.INFO, String.format("Collection of waiting confirmation publish QoS2 messages returned null instead publishMessage"));
+                    System.out.println(String.format("Collection of waiting confirmation publish QoS2 messages returned null instead publishMessage"));
+                    return;
+                }
+                this.pendingPubRec.remove(idVariableHeader.messageId());
+//                publishMessage.release();	//???
+            });
+            this.pendingPubRec.put(id, message);
+
+        } else {
+            //throw exception("Invalid MqttQoS");
+        }
+
+        this.writeAndFlush(message);
+        System.out.println(String.format("Sent publish message %s.", message));
+        logger.log(Level.INFO, String.format("Sent publish message %s.", message));
+
+        return publishFuture;
     }
 
     public Promise<MqttUnsubAckMessage> unsubscribe(List<String> topics) {
@@ -206,6 +270,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
         MqttUnsubscribeMessage message = new MqttUnsubscribeMessage(fixedHeader, variableHeader, payload);
 
         Promise<MqttUnsubAckMessage> unsubscribeFuture = new DefaultPromise<>(this.workerGroup.next());
+        this.promiseBroker.add(id, unsubscribeFuture);
         unsubscribeFuture.addListener((FutureListener) (Future f) -> {
             MqttUnsubAckMessage unsubAckMessage = (MqttUnsubAckMessage) f.get();
             MqttUnsubscribeMessage unsubscribeMessage = MqttClientImpl.this.pendingConfirmationUnsubscriptions.get(unsubAckMessage.variableHeader().messageId());
@@ -220,6 +285,8 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
         this.pendingConfirmationUnsubscriptions.put(id, message);
 
         this.writeAndFlush(message);
+        System.out.println(String.format("Sent unsubscribe message %s.", message));
+        logger.log(Level.INFO, String.format("Sent unsubscribe message %s.", message));
 
         return unsubscribeFuture;
     }
@@ -228,10 +295,11 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
         MqttFixedHeader mqttFixedHeader = new MqttFixedHeader(MqttMessageType.DISCONNECT, false, MqttQoS.AT_MOST_ONCE, false, 0);
         MqttReasonCodeAndPropertiesVariableHeader mqttDisconnectVariableHeader = new MqttReasonCodeAndPropertiesVariableHeader(reasonCode, MqttProperties.NO_PROPERTIES);
         MqttMessage message = new MqttMessage(mqttFixedHeader, mqttDisconnectVariableHeader);
-        logger.log(Level.INFO, String.format("Sent disconnection message %s", message));
-        System.out.println(String.format("Sent disconnection message %s", message));
 
         this.writeAndFlush(message);
+
+        logger.log(Level.INFO, String.format("Sent disconnection message %s", message));
+        System.out.println(String.format("Sent disconnection message %s", message));
     }
 
     public void shutdown() {
