@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package ru.maxeltr.mqttClient;
+package ru.maxeltr.mqttClient.Mqtt;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
@@ -136,13 +136,13 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
         return connectFuture;
     }
 
-    public Promise<MqttSubAckMessage> subscribe(Map<String, Integer> topicsAndQos) {
+    public Promise<MqttSubAckMessage> subscribe(Map<String, MqttQoS> topicsAndQos) {
         Promise<MqttSubAckMessage> subscribeFuture = new DefaultPromise<>(this.workerGroup.next());
         MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.SUBSCRIBE, false, MqttQoS.AT_LEAST_ONCE, false, 0);
 
         List<MqttTopicSubscription> subscriptions = new ArrayList<>();
         topicsAndQos.forEach((k, v) -> {
-            MqttTopicSubscription subscription = new MqttTopicSubscription(k, MqttQoS.valueOf(v));
+            MqttTopicSubscription subscription = new MqttTopicSubscription(k, v);
             subscriptions.add(subscription);
 
         });

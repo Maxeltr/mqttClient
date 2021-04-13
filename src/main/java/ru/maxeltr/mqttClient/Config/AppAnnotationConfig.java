@@ -35,13 +35,13 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ApplicationEventMulticaster;
 import org.springframework.context.event.SimpleApplicationEventMulticaster;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
-import ru.maxeltr.mqttClient.MqttChannelInitializer;
-import ru.maxeltr.mqttClient.MqttClientImpl;
-import ru.maxeltr.mqttClient.MqttConnectHandler;
-import ru.maxeltr.mqttClient.MqttPingHandler;
-import ru.maxeltr.mqttClient.MqttPublishHandler;
-import ru.maxeltr.mqttClient.MqttSubscriptionHandler;
-import ru.maxeltr.mqttClient.PromiseBroker;
+import ru.maxeltr.mqttClient.Mqtt.MqttChannelInitializer;
+import ru.maxeltr.mqttClient.Mqtt.MqttClientImpl;
+import ru.maxeltr.mqttClient.Mqtt.MqttConnectHandler;
+import ru.maxeltr.mqttClient.Mqtt.MqttPingHandler;
+import ru.maxeltr.mqttClient.Mqtt.MqttPublishHandler;
+import ru.maxeltr.mqttClient.Mqtt.MqttSubscriptionHandler;
+import ru.maxeltr.mqttClient.Mqtt.PromiseBroker;
 
 /**
  *

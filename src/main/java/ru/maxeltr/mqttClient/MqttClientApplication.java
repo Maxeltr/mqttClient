@@ -1,19 +1,14 @@
 package ru.maxeltr.mqttClient;
 
+import ru.maxeltr.mqttClient.Mqtt.MqttClientImpl;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelFuture;
 import io.netty.handler.codec.mqtt.MqttConnAckMessage;
-import io.netty.handler.codec.mqtt.MqttConnectReturnCode;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import io.netty.handler.codec.mqtt.MqttSubAckMessage;
-import io.netty.handler.codec.mqtt.MqttSubscribeMessage;
-import io.netty.util.collection.IntObjectMap;
 import io.netty.util.concurrent.Promise;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -33,17 +28,18 @@ public class MqttClientApplication {
 
         System.out.println("main " + connectResult.get().variableHeader().connectReturnCode());
 
-        Map<String, Integer> m = new HashMap();
+        Map<String, MqttQoS> m = new HashMap();
 //        m.put("#", MqttQoS.AT_MOST_ONCE.value());
-        m.put("test", MqttQoS.AT_MOST_ONCE.value());
+        m.put("test", MqttQoS.EXACTLY_ONCE);
 //        m.put("test/qw", MqttQoS.AT_MOST_ONCE.value());
 //        m.put("$SYS/broker/clients/connected", MqttQoS.AT_MOST_ONCE.value());
         Promise<MqttSubAckMessage> subResult = mqttClientImpl.subscribe(m);
+//
+//        MqttSubAckMessage res = subResult.get();
+//        System.out.println(String.format("main " + "MqttSubscriptionResult %s.%n", res.variableHeader().messageId()));
 
-        MqttSubAckMessage res = subResult.get();
-        System.out.println(String.format("main " + "MqttSubscriptionResult %s.%n", res.variableHeader().messageId()));
-
-        mqttClientImpl.publish("test", Unpooled.wrappedBuffer("test11april".getBytes()), MqttQoS.AT_MOST_ONCE, false);
+        Thread.sleep(2000);
+        mqttClientImpl.publish("test", Unpooled.wrappedBuffer("test11april".getBytes()), MqttQoS.EXACTLY_ONCE, false);
         Thread.sleep(2000);
 //        for( IntObjectMap.PrimitiveEntry<MqttSubscribeMessage> v: mqttClientImpl.waitingSubscriptions.entries()) {
 //            System.out.println(String.format("method main. waitingSubscriptions. key %s value %s", v.key(), v.value()));

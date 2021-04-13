@@ -21,48 +21,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package ru.maxeltr.mqttClient;
+package ru.maxeltr.mqttClient.Mqtt;
 
 import io.netty.handler.codec.mqtt.MqttConnAckMessage;
-import io.netty.handler.codec.mqtt.MqttMessage;
-import io.netty.handler.codec.mqtt.MqttSubAckMessage;
-import io.netty.util.concurrent.Promise;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Logger;
+import org.springframework.context.ApplicationEvent;
 
 /**
  *
  * @author Maxim Eltratov <<Maxim.Eltratov@ya.ru>>
  */
-public class PromiseBroker {
+public class ConnAckEvent extends ApplicationEvent {
+    private final String message;
+    private final MqttConnAckMessage connectResult;
 
-    private static final Logger logger = Logger.getLogger(PromiseBroker.class.getName());
-
-    private Promise<MqttConnAckMessage> connectFuture;
-
-    private final ConcurrentHashMap<Integer, Object> futures = new ConcurrentHashMap<>();
-
-    public PromiseBroker() {
-
+    public ConnAckEvent(Object source, String message, MqttConnAckMessage  connectResult) {
+        super(source);
+        this.message = message;
+        this.connectResult = connectResult;
+    }
+    public String getMessage() {
+        return message;
     }
 
-    public void setConnectFuture(Promise<MqttConnAckMessage> future) {
-        this.connectFuture = future;
-    }
-
-    public Promise<MqttConnAckMessage> getConnectFuture() {
-        return this.connectFuture;
-    }
-
-    public Object get(Integer id) {
-        return this.futures.get(id);
-    }
-
-    public void add(int id, Object future) {
-        this.futures.put(id, future);
-    }
-
-    public void remove(Integer id) {
-        this.futures.remove(id);
+    public MqttConnAckMessage  getConnectResult() {
+        return connectResult;
     }
 }
