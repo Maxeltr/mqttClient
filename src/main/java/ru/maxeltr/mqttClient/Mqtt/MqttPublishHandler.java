@@ -35,12 +35,16 @@ import io.netty.handler.codec.mqtt.MqttPublishMessage;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import io.netty.util.concurrent.Promise;
 import java.nio.charset.Charset;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.scheduling.annotation.Scheduled;
 import ru.maxeltr.mqttClient.Config.Config;
+import ru.maxeltr.mqttClient.Service.MessageHandler;
 
 /**
  *
@@ -52,6 +56,8 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
 
     private final Config config;
 
+    private final MessageHandler messageHandler;
+
     private final PromiseBroker promiseBroker;
 
     private final ConcurrentHashMap<Integer, MqttPublishMessage> pendingPubRel = new ConcurrentHashMap<>();
@@ -61,8 +67,9 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
     @Autowired
     private ApplicationEventPublisher applicationEventPublisher;
 
-    public MqttPublishHandler(PromiseBroker promiseBroker, Config config) {
+    public MqttPublishHandler(PromiseBroker promiseBroker, MessageHandler messageHandler, Config config) {
         this.promiseBroker = promiseBroker;
+        this.messageHandler = messageHandler;
         this.config = config;
     }
 
@@ -128,7 +135,7 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
         logger.log(Level.INFO, String.format("Sent PUBREL message %s.", message));
     }
 
-    private void handlePubrel(Channel channel, MqttMessage message) {
+    private void handlePubrel(Channel channel, MqttMessage message) throws InterruptedException {
         MqttMessageIdVariableHeader variableHeader = (MqttMessageIdVariableHeader) message.variableHeader();
         MqttPublishMessage publishMessage = this.pendingPubRel.get(variableHeader.messageId());
         if (publishMessage == null) {
@@ -147,9 +154,10 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
         logger.log(Level.INFO, String.format("Sent PUBCOMP message %s.", message));
 
         //TODO handle publish Message
+        this.messageHandler.handleMessage(publishMessage);
     }
 
-    private void handlePublish(Channel channel, MqttPublishMessage message) {
+    private void handlePublish(Channel channel, MqttPublishMessage message) throws InterruptedException {
         MqttFixedHeader fixedHeader;
         MqttMessageIdVariableHeader variableHeader;
         switch (message.fixedHeader().qosLevel()) {
@@ -157,6 +165,9 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
 //                System.out.println(String.format(message.variableHeader().topicName() + " " + message.payload().toString(Charset.forName("UTF-8"))));
                 System.out.println(String.format("handlePublish: AT_MOST_ONCE. topicName - " + message.variableHeader().topicName() + " payload - " + message.payload().toString(Charset.forName("UTF-8"))));
                 //TODO handle publish Message
+                logger.log(Level.INFO, String.format("Call MessageHandler."));
+                this.messageHandler.handleMessage(message);
+                logger.log(Level.INFO, String.format("Return from MessageHandler."));
                 break;
             case AT_LEAST_ONCE:
                 System.out.println(String.format("handlePublish: AT_LEAST_ONCE. topicName - " + message.variableHeader().topicName() + " payload - " + message.payload().toString(Charset.forName("UTF-8"))));
@@ -169,6 +180,7 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
                 System.out.println(String.format("Sent PUBACK message %s.", message));
                 logger.log(Level.INFO, String.format("Sent PUBACK message %s.", message));
                 //TODO handle publish Message
+                this.messageHandler.handleMessage(message);
                 break;
             case EXACTLY_ONCE:
                 System.out.println(String.format("handlePublish: EXACTLY_ONCE. topicName - " + message.variableHeader().topicName() + " payload - " + message.payload().toString(Charset.forName("UTF-8"))));
@@ -180,12 +192,30 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
                 MqttMessage pubrecMessage = new MqttMessage(fixedHeader, variableHeader);
 
 //                message.payload().retain();	//???
-
                 channel.writeAndFlush(pubrecMessage);
 
                 System.out.println(String.format("Sent PUBREC message %s.", message));
                 logger.log(Level.INFO, String.format("Sent PUBREC message %s.", message));
                 break;
         }
+    }
+
+    @Scheduled(fixedDelay = 20000, initialDelay = 20000)
+    private void retransmission() {
+        Iterator it;
+        it = this.pendingPubRel.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry) it.next();
+
+            System.out.println("Retransmission pending PUBREL message " + pair.getKey() + " = " + pair.getValue());
+        }
+
+        it = this.pendingPubComp.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry) it.next();
+
+            System.out.println("Retransmission pending PUBCOMP message " + pair.getKey() + " = " + pair.getValue());
+        }
+
     }
 }

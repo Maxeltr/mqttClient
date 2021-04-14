@@ -30,6 +30,7 @@ import io.netty.handler.codec.mqtt.MqttMessage;
 import io.netty.handler.codec.mqtt.MqttMessageType;
 import io.netty.handler.codec.mqtt.MqttProperties.MqttProperty;
 import io.netty.handler.codec.mqtt.MqttSubAckMessage;
+import io.netty.handler.codec.mqtt.MqttUnsubAckMessage;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.concurrent.DefaultPromise;
 import io.netty.util.concurrent.Promise;
@@ -70,7 +71,7 @@ public class MqttSubscriptionHandler extends ChannelInboundHandlerAdapter {
         if (message.fixedHeader().messageType() == MqttMessageType.SUBACK) {
             this.handleSubAck(ctx.channel(), (MqttSubAckMessage) message);
         } else if (message.fixedHeader().messageType() == MqttMessageType.UNSUBACK) {
-//            this.handleUnsuback(ctx.channel(), (MqttSubAckMessage) message);
+            this.handleUnsuback((MqttUnsubAckMessage) message);
         } else {
             ctx.fireChannelRead(ReferenceCountUtil.retain(msg));
         }
@@ -84,8 +85,13 @@ public class MqttSubscriptionHandler extends ChannelInboundHandlerAdapter {
         System.out.println(String.format("Received SUBACK for subscription with id %s. Message is %s.", message.variableHeader().messageId(), message));
         logger.log(Level.INFO, String.format("Received SUBACK for subscription with id %s. Message is %s.", message.variableHeader().messageId(), message));
 
-        channel.flush();
-
+//        channel.flush();
     }
 
+    private void handleUnsuback(MqttUnsubAckMessage message) {
+        Promise<MqttUnsubAckMessage> future = (Promise<MqttUnsubAckMessage>) this.promiseBroker.get(message.variableHeader().messageId());
+        future.setSuccess(message);
+        System.out.println(String.format("Received UNSUBACK for subscription with id %s. Message is %s.", message.variableHeader().messageId(), message));
+        logger.log(Level.INFO, String.format("Received UNSUBACK for subscription with id %s. Message is %s.", message.variableHeader().messageId(), message));
+    }
 }

@@ -23,6 +23,7 @@
  */
 package ru.maxeltr.mqttClient.Mqtt;
 
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.mqtt.MqttFixedHeader;
@@ -31,8 +32,11 @@ import io.netty.handler.codec.mqtt.MqttMessageType;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.util.ReferenceCountUtil;
+import io.netty.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import ru.maxeltr.mqttClient.Config.Config;
 
 /**
  *
@@ -41,6 +45,14 @@ import java.util.logging.Logger;
 public class MqttPingHandler extends ChannelInboundHandlerAdapter {
 
     private static final Logger logger = Logger.getLogger(MqttPingHandler.class.getName());
+
+    private final Config config;
+
+    private ScheduledFuture<?> pingRespTimeout;
+
+    public MqttPingHandler(Config config) {
+        this.config = config;
+    }
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
@@ -53,12 +65,16 @@ public class MqttPingHandler extends ChannelInboundHandlerAdapter {
         if (message.fixedHeader().messageType() == MqttMessageType.PINGREQ) {
             MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.PINGRESP, false, MqttQoS.AT_MOST_ONCE, false, 0);
             ctx.channel().writeAndFlush(new MqttMessage(fixedHeader));
-            logger.log(Level.INFO, String.format("Received ping request - %s. Sent ping response.", message.fixedHeader().messageType()));
-            System.out.println("Received ping request. Sent ping response.");
+            logger.log(Level.INFO, String.format("Received ping request. Sent ping response. %s.", msg));
+            System.out.println(String.format("Received ping request. Sent ping response. %s.", msg));
 
         } else if (message.fixedHeader().messageType() == MqttMessageType.PINGRESP) {
-            logger.log(Level.INFO, String.format("Received ping response - %s.", message.fixedHeader().messageType()));
-            System.out.println("Received PINGRESP");
+            logger.log(Level.INFO, String.format("Received ping response %s.", msg));
+            System.out.println(String.format("Received ping response %s.", msg));
+            if (this.pingRespTimeout != null && !this.pingRespTimeout.isCancelled() && !this.pingRespTimeout.isDone()) {
+                this.pingRespTimeout.cancel(true);
+                this.pingRespTimeout = null;
+            }
 
         } else {
             ctx.fireChannelRead(ReferenceCountUtil.retain(msg));
@@ -74,9 +90,18 @@ public class MqttPingHandler extends ChannelInboundHandlerAdapter {
                     break;
                 case WRITER_IDLE:
                     MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.PINGREQ, false, MqttQoS.AT_MOST_ONCE, false, 0);
-                    ctx.writeAndFlush(new MqttMessage(fixedHeader));
-                    logger.log(Level.INFO, String.format("Sent ping request - %s.", MqttMessageType.PINGREQ));
-                    System.out.println("Sent PINGREQ");
+                    MqttMessage msg = new MqttMessage(fixedHeader);
+                    ctx.writeAndFlush(msg);
+                    logger.log(Level.INFO, String.format("Sent ping request %s.", msg));
+                    System.out.println(String.format("Sent ping request %s.", msg));
+
+                    if (this.pingRespTimeout == null) {
+                        this.pingRespTimeout = ctx.channel().eventLoop().schedule(() -> {
+                            MqttFixedHeader fHeader = new MqttFixedHeader(MqttMessageType.DISCONNECT, false, MqttQoS.AT_MOST_ONCE, false, 0);
+                            ctx.channel().writeAndFlush(new MqttMessage(fHeader));
+                            //TODO ?
+                        }, Integer.parseInt(this.config.getProperty("keepAliveTimer", "20")), TimeUnit.SECONDS);
+                    }
                     break;
             }
         } else {

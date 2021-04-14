@@ -28,6 +28,7 @@ import io.netty.handler.codec.mqtt.MqttDecoder;
 import io.netty.handler.codec.mqtt.MqttEncoder;
 import io.netty.handler.timeout.IdleStateHandler;
 import java.io.IOException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.LogManager;
 import org.springframework.context.annotation.Bean;
@@ -35,6 +36,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ApplicationEventMulticaster;
 import org.springframework.context.event.SimpleApplicationEventMulticaster;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
+import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import ru.maxeltr.mqttClient.Mqtt.MqttChannelInitializer;
 import ru.maxeltr.mqttClient.Mqtt.MqttClientImpl;
 import ru.maxeltr.mqttClient.Mqtt.MqttConnectHandler;
@@ -42,12 +45,14 @@ import ru.maxeltr.mqttClient.Mqtt.MqttPingHandler;
 import ru.maxeltr.mqttClient.Mqtt.MqttPublishHandler;
 import ru.maxeltr.mqttClient.Mqtt.MqttSubscriptionHandler;
 import ru.maxeltr.mqttClient.Mqtt.PromiseBroker;
+import ru.maxeltr.mqttClient.Service.MessageHandler;
 
 /**
  *
  * @author Maxim Eltratov <<Maxim.Eltratov@ya.ru>>
  */
 @Configuration
+@EnableAsync
 public class AppAnnotationConfig {
 
     public static final String CONFIG_PATHNAME = "Configuration.xml";
@@ -62,6 +67,19 @@ public class AppAnnotationConfig {
     }
 
     @Bean
+    public Executor taskExecutor() {
+        ThreadPoolTaskExecutor threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
+		threadPoolTaskExecutor.setThreadNamePrefix("Async-");
+		threadPoolTaskExecutor.setCorePoolSize(10);
+		threadPoolTaskExecutor.setMaxPoolSize(10);
+		threadPoolTaskExecutor.setQueueCapacity(1000);
+//		threadPoolTaskExecutor.afterPropertiesSet();
+		threadPoolTaskExecutor.initialize();
+
+		return threadPoolTaskExecutor;
+    }
+
+    @Bean
     public Config config() {
         return new Config(CONFIG_PATHNAME);
     }
@@ -69,6 +87,11 @@ public class AppAnnotationConfig {
     @Bean
     public PromiseBroker promiseBroker() {
         return new PromiseBroker();
+    }
+
+    @Bean
+    public MessageHandler messageHandler() {
+        return new MessageHandler();
     }
 
     @Bean
@@ -87,13 +110,13 @@ public class AppAnnotationConfig {
     }
 
     @Bean
-    public MqttPingHandler mqttPingHandler() {
-        return new MqttPingHandler();
+    public MqttPingHandler mqttPingHandler(Config config) {
+        return new MqttPingHandler(config);
     }
 
     @Bean
-    public MqttPublishHandler mqttPublishHandler(PromiseBroker promiseBroker, Config config) {
-        return new MqttPublishHandler(promiseBroker, config);
+    public MqttPublishHandler mqttPublishHandler(PromiseBroker promiseBroker, MessageHandler messageHandler, Config config) {
+        return new MqttPublishHandler(promiseBroker, messageHandler, config);
     }
 
     @Bean

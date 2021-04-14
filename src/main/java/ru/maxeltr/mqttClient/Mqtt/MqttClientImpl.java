@@ -54,6 +54,7 @@ import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.FutureListener;
 import io.netty.util.concurrent.Promise;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -63,6 +64,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationListener;
+import org.springframework.scheduling.annotation.Scheduled;
 import ru.maxeltr.mqttClient.Config.Config;
 
 /**
@@ -94,8 +96,6 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
     private final ConcurrentHashMap<String, MqttTopicSubscription> activeTopics = new ConcurrentHashMap<>();
 
     private final ConcurrentHashMap<Integer, MqttPublishMessage> pendingPubRec = new ConcurrentHashMap<>();
-
-    private final ConcurrentHashMap<Integer, MqttUnsubscribeMessage> pendingPubComp = new ConcurrentHashMap<>();
 
     private final ConcurrentHashMap<Integer, MqttPublishMessage> pendingPubAck = new ConcurrentHashMap<>();
 
@@ -323,5 +323,38 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
     private int getNewMessageId() {
         this.nextMessageId.compareAndSet(0xffff, 1);
         return this.nextMessageId.getAndIncrement();
+    }
+
+    @Scheduled(fixedDelay = 20000, initialDelay = 20000)
+    private void retransmission() {
+        Iterator it;
+        it = this.pendingConfirmationSubscriptions.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry) it.next();
+            this.writeAndFlush(pair.getValue());
+            System.out.println("Retransmission pending confirmation subscription " + pair.getKey() + " = " + pair.getValue());
+        }
+
+        it = this.pendingConfirmationUnsubscriptions.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry) it.next();
+            this.writeAndFlush(pair.getValue());
+            System.out.println("Retransmission pending confirmation unsubscription " + pair.getKey() + " = " + pair.getValue());
+        }
+
+        it = this.pendingPubRec.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry) it.next();
+            this.writeAndFlush(pair.getValue());
+            System.out.println("Retransmission pending PUBREC message " + pair.getKey() + " = " + pair.getValue());
+        }
+
+        it = this.pendingPubAck.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry) it.next();
+            this.writeAndFlush(pair.getValue());
+            System.out.println("Retransmission pending PUBACK message " + pair.getKey() + " = " + pair.getValue());
+        }
+
     }
 }
