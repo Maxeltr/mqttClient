@@ -23,6 +23,9 @@
  */
 package ru.maxeltr.mqttClient.Service;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.springframework.scheduling.annotation.Async;
@@ -40,9 +43,31 @@ public class CommandService {
     }
 
     @Async
-    public void execute() throws InterruptedException {
+    public String execute(String app, String arguments) {
         logger.log(Level.INFO, String.format("CommandService. Start execute."));
-        Thread.sleep(5000);
-        logger.log(Level.INFO, String.format("CommandService. End execute."));
+
+        String line;
+		String result = "";
+		ProcessBuilder pb;
+		try {
+			pb = new ProcessBuilder(app, arguments);
+			pb.redirectErrorStream(true);
+			Process p = pb.start();
+			BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
+			while(true) {
+				line = br.readLine();
+				if (line == null) {
+					break;
+				}
+				result += line + "\n";
+			}
+		} catch (IOException e) {
+			System.out.println(String.format("Exception %s.", e.getMessage()));
+		}
+
+                logger.log(Level.INFO, String.format("CommandService. End execute."));
+
+		return result;
+        
     }
 }

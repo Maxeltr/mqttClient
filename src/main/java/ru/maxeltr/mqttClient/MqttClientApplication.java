@@ -30,7 +30,7 @@ public class MqttClientApplication {
 
         Map<String, MqttQoS> m = new HashMap();
 //        m.put("#", MqttQoS.AT_MOST_ONCE.value());
-        m.put("test", MqttQoS.EXACTLY_ONCE);
+        m.put("test", MqttQoS.AT_LEAST_ONCE);
 //        m.put("test/qw", MqttQoS.AT_MOST_ONCE.value());
 //        m.put("$SYS/broker/clients/connected", MqttQoS.AT_MOST_ONCE.value());
         Promise<MqttSubAckMessage> subResult = mqttClientImpl.subscribe(m);
@@ -39,7 +39,7 @@ public class MqttClientApplication {
 //        System.out.println(String.format("main " + "MqttSubscriptionResult %s.%n", res.variableHeader().messageId()));
 
         Thread.sleep(2000);
-        mqttClientImpl.publish("test", Unpooled.wrappedBuffer("test11april".getBytes()), MqttQoS.EXACTLY_ONCE, false);
+//        mqttClientImpl.publish("test", Unpooled.wrappedBuffer("test11april".getBytes()), MqttQoS.AT_MOST_ONCE, false);
         Thread.sleep(2000);
 //        for( IntObjectMap.PrimitiveEntry<MqttSubscribeMessage> v: mqttClientImpl.waitingSubscriptions.entries()) {
 //            System.out.println(String.format("method main. waitingSubscriptions. key %s value %s", v.key(), v.value()));

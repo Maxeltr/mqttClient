@@ -37,6 +37,7 @@ import org.springframework.context.event.ApplicationEventMulticaster;
 import org.springframework.context.event.SimpleApplicationEventMulticaster;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import ru.maxeltr.mqttClient.Mqtt.MqttChannelInitializer;
 import ru.maxeltr.mqttClient.Mqtt.MqttClientImpl;
@@ -53,6 +54,7 @@ import ru.maxeltr.mqttClient.Service.MessageHandler;
  */
 @Configuration
 @EnableAsync
+@EnableScheduling
 public class AppAnnotationConfig {
 
     public static final String CONFIG_PATHNAME = "Configuration.xml";
@@ -69,14 +71,14 @@ public class AppAnnotationConfig {
     @Bean
     public Executor taskExecutor() {
         ThreadPoolTaskExecutor threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
-		threadPoolTaskExecutor.setThreadNamePrefix("Async-");
-		threadPoolTaskExecutor.setCorePoolSize(10);
-		threadPoolTaskExecutor.setMaxPoolSize(10);
-		threadPoolTaskExecutor.setQueueCapacity(1000);
+        threadPoolTaskExecutor.setThreadNamePrefix("Async-");
+        threadPoolTaskExecutor.setCorePoolSize(10);
+        threadPoolTaskExecutor.setMaxPoolSize(10);
+        threadPoolTaskExecutor.setQueueCapacity(1000);
 //		threadPoolTaskExecutor.afterPropertiesSet();
-		threadPoolTaskExecutor.initialize();
+        threadPoolTaskExecutor.initialize();
 
-		return threadPoolTaskExecutor;
+        return threadPoolTaskExecutor;
     }
 
     @Bean
@@ -154,8 +156,8 @@ public class AppAnnotationConfig {
      */
     @Bean(name = "applicationEventMulticaster")
     public ApplicationEventMulticaster simpleApplicationEventMulticaster() {
-        SimpleApplicationEventMulticaster eventMulticaster =
-          new SimpleApplicationEventMulticaster();
+        SimpleApplicationEventMulticaster eventMulticaster
+                = new SimpleApplicationEventMulticaster();
 
         eventMulticaster.setTaskExecutor(new SimpleAsyncTaskExecutor());
         return eventMulticaster;

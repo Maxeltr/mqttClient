@@ -83,52 +83,52 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
         } else {
             ctx.fireChannelRead(ReferenceCountUtil.retain(msg));
         }
-        }
+    }
 
-        @Override
-        public void channelActive
-        (ChannelHandlerContext ctx) throws Exception {
-            super.channelActive(ctx);
+    @Override
+    public void channelActive(ChannelHandlerContext ctx) throws Exception {
+        super.channelActive(ctx);
 
-            MqttFixedHeader connectFixedHeader = new MqttFixedHeader(MqttMessageType.CONNECT, false, MqttQoS.AT_MOST_ONCE, false, 0);
+        MqttFixedHeader connectFixedHeader = new MqttFixedHeader(MqttMessageType.CONNECT, false, MqttQoS.AT_MOST_ONCE, false, 0);
 
-            MqttConnectVariableHeader connectVariableHeader = new MqttConnectVariableHeader(
-                    this.config.getProperty("protocolName", ""),
-                    Integer.parseInt(this.config.getProperty("protocolVersion", "")),
-                    Boolean.parseBoolean(this.config.getProperty("hasUserName", "true")), //Boolean.getBoolean("hasUserName"),
-                    Boolean.parseBoolean(this.config.getProperty("hasPassword", "true")), //Boolean.getBoolean("hasPassword"),
-                    Boolean.parseBoolean(this.config.getProperty("willRetain", "false")), //Boolean.getBoolean("willRetain"),
-                    Integer.parseInt(this.config.getProperty("willQos", "0")),
-                    Boolean.parseBoolean(this.config.getProperty("willFlag", "false")), //Boolean.getBoolean("willFlag"),
-                    Boolean.parseBoolean(this.config.getProperty("cleanSeesion", "true")), //Boolean.getBoolean("cleanSeesion"),
-                    Integer.parseInt(this.config.getProperty("keepAliveTimer", "20")),
-                    MqttProperties.NO_PROPERTIES
-            );
+        MqttConnectVariableHeader connectVariableHeader = new MqttConnectVariableHeader(
+                this.config.getProperty("protocolName", ""),
+                Integer.parseInt(this.config.getProperty("protocolVersion", "")),
+                Boolean.parseBoolean(this.config.getProperty("hasUserName", "true")), //Boolean.getBoolean("hasUserName"),
+                Boolean.parseBoolean(this.config.getProperty("hasPassword", "true")), //Boolean.getBoolean("hasPassword"),
+                Boolean.parseBoolean(this.config.getProperty("willRetain", "false")), //Boolean.getBoolean("willRetain"),
+                Integer.parseInt(this.config.getProperty("willQos", "0")),
+                Boolean.parseBoolean(this.config.getProperty("willFlag", "false")), //Boolean.getBoolean("willFlag"),
+                Boolean.parseBoolean(this.config.getProperty("cleanSeesion", "true")), //Boolean.getBoolean("cleanSeesion"),
+                Integer.parseInt(this.config.getProperty("keepAliveTimer", "20")),
+                MqttProperties.NO_PROPERTIES
+        );
 
-            MqttConnectPayload connectPayload = new MqttConnectPayload(
-                    this.config.getProperty("clientId", null),
-                    MqttProperties.NO_PROPERTIES,
-                    this.config.getProperty("willTopic", null),
-                    this.config.getProperty("willMessage", "").getBytes(),
-                    this.config.getProperty("userName", ""),
-                    this.config.getProperty("password", "").getBytes()
-            );
+        MqttConnectPayload connectPayload = new MqttConnectPayload(
+                this.config.getProperty("clientId", null),
+                MqttProperties.NO_PROPERTIES,
+                this.config.getProperty("willTopic", null),
+                this.config.getProperty("willMessage", "").getBytes(),
+                this.config.getProperty("userName", ""),
+                this.config.getProperty("password", "").getBytes()
+        );
 
-            MqttConnectMessage connectMessage = new MqttConnectMessage(connectFixedHeader, connectVariableHeader, connectPayload);
-            ctx.writeAndFlush(connectMessage);
-            System.out.println(String.format("Sent connect message %s.", connectMessage));
-            logger.log(Level.INFO, String.format("Sent connect message %s.", connectMessage));
-        }
-
-
+        MqttConnectMessage connectMessage = new MqttConnectMessage(connectFixedHeader, connectVariableHeader, connectPayload);
+        ctx.writeAndFlush(connectMessage);
+        System.out.println(String.format("Sent connect message %s.", connectMessage));
+        logger.log(Level.INFO, String.format("Sent connect message %s.", connectMessage));
+    }
 
     private void handleConnack(Channel channel, MqttConnAckMessage message) {
         MqttConnectReturnCode returnCode = message.variableHeader().connectReturnCode();
-
+        Promise<MqttConnAckMessage> future;
         switch (message.variableHeader().connectReturnCode()) {
             case CONNECTION_ACCEPTED:
                 this.publishConnAckEvent(message);
-                this.promiseBroker.getConnectFuture().setSuccess(message);
+                future = this.promiseBroker.getConnectFuture();
+                if (!future.isDone()) {
+                    future.setSuccess(message);
+                }
                 logger.log(Level.INFO, String.format("Received CONNACK message. Connection accepted %s.", message));
                 System.out.println(String.format("Received CONNACK message. Connection accepted %s.", message));
 
@@ -141,7 +141,10 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
             case CONNECTION_REFUSED_SERVER_UNAVAILABLE:
             case CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION:
                 this.publishConnAckEvent(message);
-                this.promiseBroker.getConnectFuture().setSuccess(message);
+                future = this.promiseBroker.getConnectFuture();
+                if (!future.isDone()) {
+                    future.setSuccess(message);
+                }
                 logger.log(Level.INFO, String.format("Received CONNACK message. Connection refused %s.", message));
                 System.out.println(String.format("Received CONNACK message. Connection refused %s.", message));
 

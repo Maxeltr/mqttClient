@@ -64,6 +64,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationListener;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import ru.maxeltr.mqttClient.Config.Config;
 
@@ -191,16 +192,6 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 
         this.pendingConfirmationSubscriptions.put(id, message);
 
-//        for (IntObjectMap.PrimitiveEntry<MqttSubscribeMessage> v : this.waitingSubscriptions.entries()) {
-//            System.out.println(String.format("method subscribe. waitingSubscriptions. key %s value %s", v.key(), v.value()));
-//        }
-//
-//        Iterator it = this.activeSubscriptions.entrySet().iterator();
-//        while (it.hasNext()) {
-//            Map.Entry pair = (Map.Entry) it.next();
-//            System.out.println(pair.getKey() + " = " + pair.getValue());
-//            it.remove(); // avoids a ConcurrentModificationException
-//        }
         this.writeAndFlush(message);
         System.out.println(String.format("Sent subscribe message %s.", message));
         logger.log(Level.INFO, String.format("Sent subscribe message %s.", message));
@@ -216,7 +207,9 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 
         Promise<?> publishFuture = new DefaultPromise<>(this.workerGroup.next());
         if (qos == MqttQoS.AT_MOST_ONCE) {
-            publishFuture.setSuccess(null);
+            if (!publishFuture.isDone()) {
+                publishFuture.setSuccess(null);
+            }
 
         } else if (qos == MqttQoS.AT_LEAST_ONCE) {
             this.promiseBroker.add(id, publishFuture);
@@ -326,35 +319,40 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
     }
 
     @Scheduled(fixedDelay = 20000, initialDelay = 20000)
-    private void retransmission() {
+    public void retransmission() {
+        System.out.println("strart retransmission client");
         Iterator it;
         it = this.pendingConfirmationSubscriptions.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry pair = (Map.Entry) it.next();
             this.writeAndFlush(pair.getValue());
-            System.out.println("Retransmission pending confirmation subscription " + pair.getKey() + " = " + pair.getValue());
+            System.out.println(String.format("Retransmission pending confirmation subscription. Amount %s. Message %s", this.pendingConfirmationSubscriptions.size(), pair.getValue()));
+            logger.log(Level.INFO, String.format("Retransmission pending confirmation subscription. Amount %s. Message %s", this.pendingConfirmationSubscriptions.size(), pair.getValue()));
         }
 
         it = this.pendingConfirmationUnsubscriptions.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry pair = (Map.Entry) it.next();
             this.writeAndFlush(pair.getValue());
-            System.out.println("Retransmission pending confirmation unsubscription " + pair.getKey() + " = " + pair.getValue());
+            System.out.println(String.format("Retransmission pending confirmation unsubscription. Amount %s. Message %s", this.pendingConfirmationUnsubscriptions.size(), pair.getValue()));
+            logger.log(Level.INFO, String.format("Retransmission pending confirmation unsubscription. Amount %s. Message %s", this.pendingConfirmationUnsubscriptions.size(), pair.getValue()));
         }
 
         it = this.pendingPubRec.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry pair = (Map.Entry) it.next();
             this.writeAndFlush(pair.getValue());
-            System.out.println("Retransmission pending PUBREC message " + pair.getKey() + " = " + pair.getValue());
+            System.out.println(String.format("Retransmission pending PUBREC. Amount %s. Message %s", this.pendingPubRec.size(), pair.getValue()));
+            logger.log(Level.INFO, String.format("Retransmission pending PUBREC. Amount %s. Message %s", this.pendingPubRec.size(), pair.getValue()));
         }
 
         it = this.pendingPubAck.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry pair = (Map.Entry) it.next();
             this.writeAndFlush(pair.getValue());
-            System.out.println("Retransmission pending PUBACK message " + pair.getKey() + " = " + pair.getValue());
+            System.out.println(String.format("Retransmission pending PUBACK. Amount %s. Message %s", this.pendingPubAck.size(), pair.getValue()));
+            logger.log(Level.INFO, String.format("Retransmission pending PUBACK. Amount %s. Message %s", this.pendingPubAck.size(), pair.getValue()));
         }
-
+System.out.println("end retransmission client");
     }
 }

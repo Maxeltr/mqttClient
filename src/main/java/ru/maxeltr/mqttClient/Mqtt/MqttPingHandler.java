@@ -97,8 +97,10 @@ public class MqttPingHandler extends ChannelInboundHandlerAdapter {
 
                     if (this.pingRespTimeout == null) {
                         this.pingRespTimeout = ctx.channel().eventLoop().schedule(() -> {
-                            MqttFixedHeader fHeader = new MqttFixedHeader(MqttMessageType.DISCONNECT, false, MqttQoS.AT_MOST_ONCE, false, 0);
-                            ctx.channel().writeAndFlush(new MqttMessage(fHeader));
+//                            MqttFixedHeader fHeader = new MqttFixedHeader(MqttMessageType.DISCONNECT, false, MqttQoS.AT_MOST_ONCE, false, 0);
+//                            ctx.channel().writeAndFlush(new MqttMessage(fHeader));
+                            System.out.println(String.format("Ping response was not received for keepAlive time. Sent disconnect message."));
+                            logger.log(Level.INFO, String.format("Ping response was not received for keepAlive time. Sent disconnect message."));
                             //TODO ?
                         }, Integer.parseInt(this.config.getProperty("keepAliveTimer", "20")), TimeUnit.SECONDS);
                     }

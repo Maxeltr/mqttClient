@@ -81,7 +81,9 @@ public class MqttSubscriptionHandler extends ChannelInboundHandlerAdapter {
 
 //        this.publishSubAckEvent(mqttResultSub);
         Promise<MqttSubAckMessage> future = (Promise<MqttSubAckMessage>) this.promiseBroker.get(message.variableHeader().messageId());
-        future.setSuccess(message);
+        if (!future.isDone()) {
+            future.setSuccess(message);
+        }
         System.out.println(String.format("Received SUBACK for subscription with id %s. Message is %s.", message.variableHeader().messageId(), message));
         logger.log(Level.INFO, String.format("Received SUBACK for subscription with id %s. Message is %s.", message.variableHeader().messageId(), message));
 
@@ -90,7 +92,9 @@ public class MqttSubscriptionHandler extends ChannelInboundHandlerAdapter {
 
     private void handleUnsuback(MqttUnsubAckMessage message) {
         Promise<MqttUnsubAckMessage> future = (Promise<MqttUnsubAckMessage>) this.promiseBroker.get(message.variableHeader().messageId());
-        future.setSuccess(message);
+        if (!future.isDone()) {
+            future.setSuccess(message);
+        }
         System.out.println(String.format("Received UNSUBACK for subscription with id %s. Message is %s.", message.variableHeader().messageId(), message));
         logger.log(Level.INFO, String.format("Received UNSUBACK for subscription with id %s. Message is %s.", message.variableHeader().messageId(), message));
     }
