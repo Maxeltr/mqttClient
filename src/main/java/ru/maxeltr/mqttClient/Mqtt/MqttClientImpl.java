@@ -321,38 +321,46 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
     @Scheduled(fixedDelay = 20000, initialDelay = 20000)
     public void retransmission() {
         System.out.println("strart retransmission client");
+        int index = 1;
         Iterator it;
         it = this.pendingConfirmationSubscriptions.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry pair = (Map.Entry) it.next();
             this.writeAndFlush(pair.getValue());
-            System.out.println(String.format("Retransmission pending confirmation subscription. Amount %s. Message %s", this.pendingConfirmationSubscriptions.size(), pair.getValue()));
-            logger.log(Level.INFO, String.format("Retransmission pending confirmation subscription. Amount %s. Message %s", this.pendingConfirmationSubscriptions.size(), pair.getValue()));
+            System.out.println(String.format("Retransmission pending confirmation subscription. %s from %s. Message %s", index, this.pendingConfirmationSubscriptions.size(), pair.getValue()));
+            logger.log(Level.INFO, String.format("Retransmission pending confirmation subscription. %s from %s. Message %s", index, this.pendingConfirmationSubscriptions.size(), pair.getValue()));
+            index++;
         }
 
+        index = 1;
         it = this.pendingConfirmationUnsubscriptions.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry pair = (Map.Entry) it.next();
             this.writeAndFlush(pair.getValue());
-            System.out.println(String.format("Retransmission pending confirmation unsubscription. Amount %s. Message %s", this.pendingConfirmationUnsubscriptions.size(), pair.getValue()));
-            logger.log(Level.INFO, String.format("Retransmission pending confirmation unsubscription. Amount %s. Message %s", this.pendingConfirmationUnsubscriptions.size(), pair.getValue()));
+            System.out.println(String.format("Retransmission pending confirmation unsubscription. %s from %s. Message %s", index, this.pendingConfirmationUnsubscriptions.size(), pair.getValue()));
+            logger.log(Level.INFO, String.format("Retransmission pending confirmation unsubscription. %s from %s. Message %s", index, this.pendingConfirmationUnsubscriptions.size(), pair.getValue()));
+            index++;
         }
 
+        index = 1;
         it = this.pendingPubRec.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry pair = (Map.Entry) it.next();
             this.writeAndFlush(pair.getValue());
-            System.out.println(String.format("Retransmission pending PUBREC. Amount %s. Message %s", this.pendingPubRec.size(), pair.getValue()));
-            logger.log(Level.INFO, String.format("Retransmission pending PUBREC. Amount %s. Message %s", this.pendingPubRec.size(), pair.getValue()));
+            System.out.println(String.format("Retransmission pending PUBREC publish message (QoS2). %s from %s. Message %s", index, this.pendingPubRec.size(), pair.getValue()));
+            logger.log(Level.INFO, String.format("Retransmission pending PUBREC publish message (QoS2). %s from %s. Message %s", index, this.pendingPubRec.size(), pair.getValue()));
+            index++;
         }
 
+        index = 1;
         it = this.pendingPubAck.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry pair = (Map.Entry) it.next();
             this.writeAndFlush(pair.getValue());
-            System.out.println(String.format("Retransmission pending PUBACK. Amount %s. Message %s", this.pendingPubAck.size(), pair.getValue()));
-            logger.log(Level.INFO, String.format("Retransmission pending PUBACK. Amount %s. Message %s", this.pendingPubAck.size(), pair.getValue()));
+            System.out.println(String.format("Retransmission pending PUBACK publish message (QoS1). %s from %s. Message %s", index, this.pendingPubAck.size(), pair.getValue()));
+            logger.log(Level.INFO, String.format("Retransmission pending PUBACK publish message (QoS1). %s from %s. Message %s", index, this.pendingPubAck.size(), pair.getValue()));
+            index++;
         }
-System.out.println("end retransmission client");
+        System.out.println("end retransmission client");
     }
 }
