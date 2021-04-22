@@ -39,7 +39,7 @@ public class MqttClientApplication {
 //        System.out.println(String.format("main " + "MqttSubscriptionResult %s.%n", res.variableHeader().messageId()));
 
         Thread.sleep(2000);
-//        mqttClientImpl.publish("test", Unpooled.wrappedBuffer("test11april".getBytes()), MqttQoS.AT_MOST_ONCE, false);
+        mqttClientImpl.publish("test", Unpooled.wrappedBuffer("test11april".getBytes()), MqttQoS.AT_LEAST_ONCE, false);
         Thread.sleep(2000);
 //        for( IntObjectMap.PrimitiveEntry<MqttSubscribeMessage> v: mqttClientImpl.waitingSubscriptions.entries()) {
 //            System.out.println(String.format("method main. waitingSubscriptions. key %s value %s", v.key(), v.value()));

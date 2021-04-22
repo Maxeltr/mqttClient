@@ -35,7 +35,9 @@ import io.netty.handler.codec.mqtt.MqttPublishMessage;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import io.netty.util.concurrent.Promise;
 import java.nio.charset.Charset;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
@@ -63,9 +65,12 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
 
     private ChannelHandlerContext ctx;
 
-    private final ConcurrentHashMap<Integer, MqttPublishMessage> pendingPubRel = new ConcurrentHashMap<>();
+//    private final ConcurrentHashMap<Integer, MqttPublishMessage> pendingPubRel = new ConcurrentHashMap<>();
+//
+//    private final ConcurrentHashMap<Integer, MqttMessage> pendingPubComp = new ConcurrentHashMap<>();
+    private final Map<Integer, MqttPublishMessage> pendingPubRel = Collections.synchronizedMap(new LinkedHashMap());
 
-    private final ConcurrentHashMap<Integer, MqttMessage> pendingPubComp = new ConcurrentHashMap<>();
+    private final Map<Integer, MqttMessage> pendingPubComp = Collections.synchronizedMap(new LinkedHashMap());
 
     @Autowired
     private ApplicationEventPublisher applicationEventPublisher;
@@ -86,8 +91,8 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
         switch (msg.fixedHeader().messageType()) {
             case PUBLISH:
                 MqttPublishMessage pubMessage = (MqttPublishMessage) msg;
-                System.out.println(String.format("Received PUBLISH for message with id %s. Message is %s.", pubMessage.variableHeader().messageId(), pubMessage));
-                logger.log(Level.INFO, String.format("Received PUBLISH for message with id %s. Message is %s.", pubMessage.variableHeader().messageId(), pubMessage));
+                System.out.println(String.format("Received PUBLISH for message with id %s. Message is %s.", pubMessage.variableHeader().packetId(), pubMessage));
+                logger.log(Level.INFO, String.format("Received PUBLISH for message with id %s. Message is %s.", pubMessage.variableHeader().packetId(), pubMessage));
                 this.handlePublish(ctx.channel(), (MqttPublishMessage) pubMessage);
                 break;
             case PUBACK:
@@ -123,10 +128,12 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
         MqttMessageIdVariableHeader variableHeader = (MqttMessageIdVariableHeader) message.variableHeader();
         MqttMessage pubRecMessage = this.pendingPubComp.get(variableHeader.messageId());
         if (pubRecMessage == null) {
-            logger.log(Level.INFO, String.format("Collection of waiting confirmation publish QoS2 messages returned null instead saved pubRecMessage"));
-            System.out.println(String.format("Collection of waiting confirmation publish QoS2 messages returned null instead saved pubRecMessage"));
+            logger.log(Level.INFO, String.format("Collection of waiting confirmation PUBREC messages returned null instead saved pubRecMessage"));
+            System.out.println(String.format("Collection of waiting confirmation PUBREC messages returned null instead saved pubRecMessage"));
         } else {
             this.pendingPubComp.remove(variableHeader.messageId());
+            logger.log(Level.INFO, String.format("Remove (from pending PUBCOMP) saved pubRecMessage %s", pubRecMessage));
+            System.out.println(String.format("Remove (from pending PUBCOMP) saved pubRecMessage %s", pubRecMessage));
         }
     }
 
@@ -163,8 +170,8 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
             this.messageHandler.handleMessage(publishMessage);
             this.pendingPubRel.remove(variableHeader.messageId());
 //            publishMessage.release();	//???
-            logger.log(Level.INFO, String.format("Remove message %s from waiting confirmation publish QoS2 messages", variableHeader.messageId()));
-            System.out.println(String.format("Remove message %s from waiting confirmation publish QoS2 messages", variableHeader.messageId()));
+            logger.log(Level.INFO, String.format("Remove (from pending PUBREL) publish message id %s", variableHeader.messageId()));
+            System.out.println(String.format("Remove (from pending PUBREL) publish message id %s", variableHeader.messageId()));
         }
 
         MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.PUBCOMP, false, MqttQoS.AT_MOST_ONCE, false, 0);
@@ -178,8 +185,6 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
     }
 
     private void handlePublish(Channel channel, MqttPublishMessage message) throws InterruptedException {
-        System.out.println(String.format("Publish message received %s.", message));
-        logger.log(Level.INFO, String.format("Publish message received %s.", message));
         MqttFixedHeader fixedHeader;
         MqttMessageIdVariableHeader variableHeader;
         switch (message.fixedHeader().qosLevel()) {
@@ -201,7 +206,7 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
                 this.messageHandler.handleMessage(message);
 
                 fixedHeader = new MqttFixedHeader(MqttMessageType.PUBACK, false, MqttQoS.AT_MOST_ONCE, false, 0);
-                variableHeader = MqttMessageIdVariableHeader.from(message.variableHeader().messageId());
+                variableHeader = MqttMessageIdVariableHeader.from(message.variableHeader().packetId());
 
                 channel.writeAndFlush(new MqttPubAckMessage(fixedHeader, variableHeader));
 
@@ -212,15 +217,15 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
             case EXACTLY_ONCE:
                 System.out.println(String.format("handlePublish: EXACTLY_ONCE. topicName - " + message.variableHeader().topicName() + " payload - " + message.payload().toString(Charset.forName("UTF-8"))));
 
-                if (!this.pendingPubRel.containsKey(message.variableHeader().messageId())) {
-                    this.pendingPubRel.put(message.variableHeader().messageId(), message);
+                if (!this.pendingPubRel.containsKey(message.variableHeader().packetId())) {
+                    this.pendingPubRel.put(message.variableHeader().packetId(), message);
                 } else {
                     System.out.println(String.format("Received publish message with QoS2 is repeated %s.", message));
                     logger.log(Level.INFO, String.format("Received publish message with QoS2 is repeated %s.", message));
                 }
 
                 fixedHeader = new MqttFixedHeader(MqttMessageType.PUBREC, false, MqttQoS.AT_MOST_ONCE, false, 0);
-                variableHeader = MqttMessageIdVariableHeader.from(message.variableHeader().messageId());
+                variableHeader = MqttMessageIdVariableHeader.from(message.variableHeader().packetId());
                 MqttMessage pubrecMessage = new MqttMessage(fixedHeader, variableHeader);
 
 //                message.payload().retain();	//???
@@ -238,28 +243,32 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
         Channel channel = this.ctx.channel();
         Iterator it;
         int index = 1;
-        it = this.pendingPubRel.entrySet().iterator();
-        while (it.hasNext()) {
-            Map.Entry pair = (Map.Entry) it.next();
-            System.out.println(String.format("Pending PUBREL. Incoming publish message %s from %s. Message %s", index, this.pendingPubRel.size(), pair.getValue()));
-            logger.log(Level.INFO, String.format("Pending PUBREL. Incoming publish message %s from %s. Message %s", index, this.pendingPubRel.size(), pair.getValue()));
-            index++;
+        synchronized (this.pendingPubRel) {
+            it = this.pendingPubRel.entrySet().iterator();
+            while (it.hasNext()) {
+                Map.Entry pair = (Map.Entry) it.next();
+                System.out.println(String.format("Pending PUBREL. Incoming publish message %s from %s. Message %s", index, this.pendingPubRel.size(), pair.getValue()));
+                logger.log(Level.INFO, String.format("Pending PUBREL. Incoming publish message %s from %s. Message %s", index, this.pendingPubRel.size(), pair.getValue()));
+                index++;
+            }
         }
 
         index = 1;
-        it = this.pendingPubComp.entrySet().iterator();
-        while (it.hasNext()) {
-            Map.Entry pair = (Map.Entry) it.next();
-            if (channel.isActive()) {
-                MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.PUBREL, false, MqttQoS.AT_LEAST_ONCE, false, 0);
-                MqttMessage pubrelMessage = new MqttMessage(fixedHeader, (MqttMessageIdVariableHeader) pair.getValue().);
+        synchronized (this.pendingPubComp) {
+            it = this.pendingPubComp.entrySet().iterator();
+            while (it.hasNext()) {
+                Map.Entry pair = (Map.Entry) it.next();
+                if (channel.isActive()) {
+                    MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.PUBREL, false, MqttQoS.AT_LEAST_ONCE, false, 0);
+                    MqttMessage pubrelMessage = new MqttMessage(fixedHeader, (MqttMessageIdVariableHeader) pair.getValue());
 
-                channel.writeAndFlush(pubrelMessage);
+                    channel.writeAndFlush(pubrelMessage);
 
-                System.out.println(String.format("Retransmission pending PUBCOMP. Sent PUBREL message. PUBREC %s from %s. Message %s", index, this.pendingPubComp.size(), pair.getValue()));
-                logger.log(Level.INFO, String.format("Retransmission pending PUBCOMP. Sent PUBREL message. PUBREC %s from %s. Message %s", index, this.pendingPubComp.size(), pair.getValue()));
+                    System.out.println(String.format("Retransmission pending PUBCOMP. Sent PUBREL message. PUBREC %s from %s. Message %s", index, this.pendingPubComp.size(), pair.getValue()));
+                    logger.log(Level.INFO, String.format("Retransmission pending PUBCOMP. Sent PUBREL message. PUBREC %s from %s. Message %s", index, this.pendingPubComp.size(), pair.getValue()));
+                }
+                index++;
             }
-            index++;
         }
         System.out.println("end retransmission publish handler");
     }
