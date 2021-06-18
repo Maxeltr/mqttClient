@@ -31,8 +31,8 @@ import java.util.logging.Logger;
 import org.springframework.scheduling.annotation.Async;
 
 /**
- *
- * @author Maxim Eltratov <<Maxim.Eltratov@ya.ru>>
+ * Executes processes on the host it is running on.
+ * processes runs by command receives in the message payload.
  */
 public class CommandService {
 
@@ -68,6 +68,6 @@ public class CommandService {
                 logger.log(Level.INFO, String.format("CommandService. End execute."));
 
 		return result;
-        
+
     }
 }

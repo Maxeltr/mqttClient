@@ -52,6 +52,7 @@ import io.netty.handler.codec.mqtt.MqttUnsubscribePayload;
 import io.netty.util.concurrent.DefaultPromise;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.FutureListener;
+import io.netty.util.concurrent.GenericFutureListener;
 import io.netty.util.concurrent.Promise;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -145,6 +146,21 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 
         logger.log(Level.INFO, String.format("Connecting to %s via port %s.", host, port));
         System.out.println(String.format("Connecting to %s via port %s.", host, port));
+
+        return connectFuture;
+    }
+
+    /**
+     * Connect to the specified hostname/ip using the specified port
+     *
+     * @param host The ip address or host to connect to
+     * @param port The tcp port to connect to
+     * @listener The listener is notified when connecting is done
+     * @return
+     */
+    public Promise<MqttConnAckMessage> connect(String host, int port, GenericFutureListener listener) {
+        Promise<MqttConnAckMessage> connectFuture = this.connect(host, port);
+        connectFuture.addListener(listener);
 
         return connectFuture;
     }
@@ -266,7 +282,8 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
             logger.log(Level.INFO, String.format("Add (to pending PUBREC collection) publish message %s", message));
             System.out.println(String.format("Add (to pending PUBREC collection) publish message %s", message));
         } else {
-            //throw exception("Invalid MqttQoS");
+            logger.log(Level.SEVERE, String.format("Invalid MqttQoS %s", qos));
+            throw new IllegalArgumentException("Invalid MqttQoS given");
         }
 
         this.writeAndFlush(message);
