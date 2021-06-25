@@ -65,11 +65,11 @@ public class MqttPingHandler extends ChannelInboundHandlerAdapter {
         if (message.fixedHeader().messageType() == MqttMessageType.PINGREQ) {
             MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.PINGRESP, false, MqttQoS.AT_MOST_ONCE, false, 0);
             ctx.channel().writeAndFlush(new MqttMessage(fixedHeader));
-            logger.log(Level.INFO, String.format("Received ping request. Sent ping response. %s.", msg));
+            logger.log(Level.FINE, String.format("Received ping request. Sent ping response. %s.", msg));
             System.out.println(String.format("Received ping request. Sent ping response. %s.", msg));
 
         } else if (message.fixedHeader().messageType() == MqttMessageType.PINGRESP) {
-            logger.log(Level.INFO, String.format("Received ping response %s.", msg));
+            logger.log(Level.FINE, String.format("Received ping response %s.", msg));
             System.out.println(String.format("Received ping response %s.", msg));
             if (this.pingRespTimeout != null && !this.pingRespTimeout.isCancelled() && !this.pingRespTimeout.isDone()) {
                 this.pingRespTimeout.cancel(true);
@@ -92,15 +92,15 @@ public class MqttPingHandler extends ChannelInboundHandlerAdapter {
                     MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.PINGREQ, false, MqttQoS.AT_MOST_ONCE, false, 0);
                     MqttMessage msg = new MqttMessage(fixedHeader);
                     ctx.writeAndFlush(msg);
-                    logger.log(Level.INFO, String.format("Sent ping request %s.", msg));
+                    logger.log(Level.FINE, String.format("Sent ping request %s.", msg));
                     System.out.println(String.format("Sent ping request %s.", msg));
 
                     if (this.pingRespTimeout == null) {
                         this.pingRespTimeout = ctx.channel().eventLoop().schedule(() -> {
 //                            MqttFixedHeader fHeader = new MqttFixedHeader(MqttMessageType.DISCONNECT, false, MqttQoS.AT_MOST_ONCE, false, 0);
 //                            ctx.channel().writeAndFlush(new MqttMessage(fHeader));
-                            System.out.println(String.format("Ping response was not received for keepAlive time. Sent disconnect message."));
-                            logger.log(Level.INFO, String.format("Ping response was not received for keepAlive time. Sent disconnect message."));
+                            System.out.println(String.format("Ping response was not received for keepAlive time."));
+                            logger.log(Level.WARNING, String.format("Ping response was not received for keepAlive time."));
                             //TODO ?
                         }, Integer.parseInt(this.config.getProperty("keepAliveTimer", "20")), TimeUnit.SECONDS);
                     }

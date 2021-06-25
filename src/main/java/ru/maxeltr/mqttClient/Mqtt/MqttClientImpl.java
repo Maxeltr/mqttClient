@@ -186,7 +186,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
                 MqttSubAckMessage subAckMessage = (MqttSubAckMessage) f.get();
                 MqttSubscribeMessage subscribeMessage = MqttClientImpl.this.pendingConfirmationSubscriptions.get(subAckMessage.variableHeader().messageId());
                 if (subscribeMessage == null) {
-                    logger.log(Level.INFO, String.format("Collection of waiting subscriptions returned null instead subscribeMessage"));
+                    logger.log(Level.WARNING, String.format("Collection of waiting subscriptions returned null instead subscribeMessage"));
                     System.out.println(String.format("Collection of waiting subscriptions returned null instead subscribeMessage"));
                     return;
                 }
@@ -194,24 +194,24 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
                 List<MqttTopicSubscription> topics = subscribeMessage.payload().topicSubscriptions();
                 List<Integer> subAckQos = subAckMessage.payload().grantedQoSLevels();
                 if (subAckQos.size() != topics.size()) {
-                    logger.log(Level.INFO, String.format("Number of topics to subscribe is not match number of returned granted QOS. Number of returned QoS %s. Amount topics %s", subAckQos.size(), topics.size()));
+                    logger.log(Level.WARNING, String.format("Number of topics to subscribe is not match number of returned granted QOS. Number of returned QoS %s. Amount topics %s", subAckQos.size(), topics.size()));
                     System.out.println(String.format("Number of topics to subscribe is not match number of returned granted QOS. Number of returned QoS  %s. Amount topics %s", subAckQos.size(), topics.size()));
                 } else {
                     for (int i = 0; i < subAckQos.size(); i++) {
                         if (subAckQos.get(i) == topics.get(i).qualityOfService().value()) {
                             MqttClientImpl.this.activeTopics.put(topics.get(i).topicName(), topics.get(i));
-                            logger.log(Level.INFO, String.format("Subscribed on topic %s with Qos %s.", topics.get(i).topicName(), topics.get(i).qualityOfService()));
-                            System.out.println(String.format("Subscribed on topic %s with Qos %s.", topics.get(i).topicName(), topics.get(i).qualityOfService()));
+                            logger.log(Level.INFO, String.format("Subscribed on topic \"%s\" with Qos %s.", topics.get(i).topicName(), topics.get(i).qualityOfService()));
+                            System.out.println(String.format("Subscribed on topic \"%s\" with Qos %s.", topics.get(i).topicName(), topics.get(i).qualityOfService()));
                         } else {
-                            logger.log(Level.INFO, String.format("Subscription on topic %s with Qos %s failed. Returned Qos %s", topics.get(i).topicName(), topics.get(i).qualityOfService(), subAckQos.get(i)));
-                            System.out.println(String.format("Subscription on topic %s with Qos %s failed. Returned Qos %s", topics.get(i).topicName(), topics.get(i).qualityOfService(), subAckQos.get(i)));
+                            logger.log(Level.INFO, String.format("Subscription on topic \"%s\" with Qos %s failed. Returned Qos %s", topics.get(i).topicName(), topics.get(i).qualityOfService(), subAckQos.get(i)));
+                            System.out.println(String.format("Subscription on topic \"%s\" with Qos %s failed. Returned Qos %s", topics.get(i).topicName(), topics.get(i).qualityOfService(), subAckQos.get(i)));
                         }
 
                     }
                 }
 
                 MqttClientImpl.this.pendingConfirmationSubscriptions.remove(subAckMessage.variableHeader().messageId());
-                logger.log(Level.INFO, String.format("Remove (from pending subscriptions) saved subscription message id %s", subAckMessage.variableHeader().messageId()));
+                logger.log(Level.FINE, String.format("Remove (from pending subscriptions) saved subscription message id: %s", subAckMessage.variableHeader().messageId()));
                 System.out.println(String.format("Remove (from pending subscriptions) saved subscription message id %s", subAckMessage.variableHeader().messageId()));
             } catch (InterruptedException ex) {
                 logger.log(Level.SEVERE, null, ex);
@@ -221,12 +221,12 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
         });
 
         this.pendingConfirmationSubscriptions.put(id, message);
-        logger.log(Level.INFO, String.format("Add (to pending subscription collection) subscription message %s", message));
-        System.out.println(String.format("Add (from pending subscription collection) subscription message %s", message));
+        logger.log(Level.FINE, String.format("Add (to pending subscription collection) subscription message id: %s", message));
+        System.out.println(String.format("Add (to pending subscription collection) subscription message %s", message));
 
         this.writeAndFlush(message);
         System.out.println(String.format("Sent subscribe message %s.", message));
-        logger.log(Level.INFO, String.format("Sent subscribe message %s.", message));
+        logger.log(Level.INFO, String.format("Sent subscribe message id: %s, d: %s, q: %s, r: %s.", message.variableHeader().messageId(), message.fixedHeader().isDup(), message.fixedHeader().qosLevel(), message.fixedHeader().isRetain()));
 
         return subscribeFuture;
     }
@@ -249,18 +249,18 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
                 MqttPubAckMessage pubAckMessage = (MqttPubAckMessage) f.get();
                 MqttPublishMessage publishMessage = MqttClientImpl.this.pendingPubAck.get(pubAckMessage.variableHeader().messageId());
                 if (publishMessage == null) {
-                    logger.log(Level.INFO, String.format("Collection of waiting confirmation publish QoS1 messages returned null instead publishMessage"));
+                    logger.log(Level.WARNING, String.format("Collection of waiting confirmation publish QoS1 messages returned null instead publishMessage"));
                     System.out.println(String.format("Collection of waiting confirmation publish QoS1 messages returned null instead publishMessage"));
                     return;
                 }
                 this.pendingPubAck.remove(pubAckMessage.variableHeader().messageId());
-                logger.log(Level.INFO, String.format("Remove (from pending PUBACK) saved publish message id %s", pubAckMessage.variableHeader().messageId()));
+                logger.log(Level.FINE, String.format("Remove (from pending PUBACK) saved publish message id: %s", pubAckMessage.variableHeader().messageId()));
                 System.out.println(String.format("Remove (from pending PUBACK) saved publish message id %s", pubAckMessage.variableHeader().messageId()));
 //                publishMessage.release();	//???
             });
             this.pendingPubAck.put(id, message);
-            logger.log(Level.INFO, String.format("Add (to pending PUBACK collection) publish message %s", message));
-            System.out.println(String.format("Add (to pending PUBACK collection) publish message %s", message));
+            logger.log(Level.FINE, String.format("Add (to pending PUBACK collection) publish message id: %s", message.variableHeader().packetId()));
+            System.out.println(String.format("Add (to pending PUBACK collection) publish message id: %s", message.variableHeader().packetId()));
 
         } else if (qos == MqttQoS.EXACTLY_ONCE) {
             this.promiseBroker.add(id, publishFuture);
@@ -269,26 +269,40 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
                 MqttMessageIdVariableHeader idVariableHeader = (MqttMessageIdVariableHeader) pubRecMessage.variableHeader();
                 MqttPublishMessage publishMessage = MqttClientImpl.this.pendingPubRec.get(idVariableHeader.messageId());
                 if (publishMessage == null) {
-                    logger.log(Level.INFO, String.format("Collection of waiting confirmation publish QoS2 messages returned null instead publishMessage"));
+                    logger.log(Level.WARNING, String.format("Collection of waiting confirmation publish QoS2 messages returned null instead publishMessage"));
                     System.out.println(String.format("Collection of waiting confirmation publish QoS2 messages returned null instead publishMessage"));
                     return;
                 }
                 this.pendingPubRec.remove(idVariableHeader.messageId());
-                logger.log(Level.INFO, String.format("Remove (from pending PUBREC) saved publish message id %s", idVariableHeader.messageId()));
-                System.out.println(String.format("Remove (from pending PUBREC) saved publish message id %s", idVariableHeader.messageId()));
+                logger.log(Level.FINE, String.format("Remove (from pending PUBREC) saved publish message id: %s", idVariableHeader.messageId()));
+                System.out.println(String.format("Remove (from pending PUBREC) saved publish message id: %s", idVariableHeader.messageId()));
 //                publishMessage.release();	//???
             });
             this.pendingPubRec.put(id, message);
-            logger.log(Level.INFO, String.format("Add (to pending PUBREC collection) publish message %s", message));
-            System.out.println(String.format("Add (to pending PUBREC collection) publish message %s", message));
+            logger.log(Level.FINE, String.format("Add (to pending PUBREC collection) publish message id: %s", message.variableHeader().packetId()));
+            System.out.println(String.format("Add (to pending PUBREC collection) publish message id: %s", message.variableHeader().packetId()));
         } else {
             logger.log(Level.SEVERE, String.format("Invalid MqttQoS %s", qos));
             throw new IllegalArgumentException("Invalid MqttQoS given");
         }
 
         this.writeAndFlush(message);
-        System.out.println(String.format("Sent publish message %s.", message));
-        logger.log(Level.INFO, String.format("Sent publish message %s.", message));
+
+        System.out.println(String.format("Sent publish message id: %s, t: %s, d: %s, q: %s, r: %s.",
+                message.variableHeader().packetId(),
+                message.variableHeader().topicName(),
+                message.fixedHeader().isDup(),
+                message.fixedHeader().qosLevel(),
+                message.fixedHeader().isRetain()
+        ));
+
+        logger.log(Level.INFO, String.format("Sent publish message id: %s, t: %s, d: %s, q: %s, r: %s.",
+                message.variableHeader().packetId(),
+                message.variableHeader().topicName(),
+                message.fixedHeader().isDup(),
+                message.fixedHeader().qosLevel(),
+                message.fixedHeader().isRetain()
+        ));
 
         return publishFuture;
     }
@@ -308,22 +322,33 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
             MqttUnsubAckMessage unsubAckMessage = (MqttUnsubAckMessage) f.get();
             MqttUnsubscribeMessage unsubscribeMessage = MqttClientImpl.this.pendingConfirmationUnsubscriptions.get(unsubAckMessage.variableHeader().messageId());
             if (unsubscribeMessage == null) {
-                logger.log(Level.INFO, String.format("Collection of waiting unsubscriptions returned null instead unsubscribeMessage"));
+                logger.log(Level.WARNING, String.format("Collection of waiting unsubscriptions returned null instead unsubscribeMessage"));
                 System.out.println(String.format("Collection of waiting unsubscriptions returned null instead unsubscribeMessage"));
                 return;
             }
             activeTopics.keySet().removeAll(unsubscribeMessage.payload().topics());
             this.pendingConfirmationUnsubscriptions.remove(unsubAckMessage.variableHeader().messageId());
-            logger.log(Level.INFO, String.format("Remove (from pending unsubscriptions) saved unsubscriptions message id %s", unsubAckMessage.variableHeader().messageId()));
-            System.out.println(String.format("Remove (from pending unsubscriptions) saved unsubscriptions message id %s", unsubAckMessage.variableHeader().messageId()));
+            logger.log(Level.FINE, String.format("Remove (from pending unsubscriptions) saved unsubscriptions message id: %s", unsubAckMessage.variableHeader().messageId()));
+            System.out.println(String.format("Remove (from pending unsubscriptions) saved unsubscriptions message id: %s", unsubAckMessage.variableHeader().messageId()));
         });
         this.pendingConfirmationUnsubscriptions.put(id, message);
-        logger.log(Level.INFO, String.format("Add (to pending unsubscription collection) unsubscription message %s", message));
-        System.out.println(String.format("Add (to pending unsubscription collection) unsubscription message %s", message));
+        logger.log(Level.FINE, String.format("Add (to pending unsubscription collection) unsubscription message id: %s", message.variableHeader().messageId()));
+        System.out.println(String.format("Add (to pending unsubscription collection) unsubscription message id: %s", message.variableHeader().messageId()));
 
         this.writeAndFlush(message);
-        System.out.println(String.format("Sent unsubscribe message %s.", message));
-        logger.log(Level.INFO, String.format("Sent unsubscribe message %s.", message));
+
+        System.out.println(String.format("Sent unsubscribe message id: %s, d: %s, q: %s, r: %s.",
+                message.variableHeader().messageId(),
+                message.fixedHeader().isDup(),
+                message.fixedHeader().qosLevel(),
+                message.fixedHeader().isRetain()
+        ));
+        logger.log(Level.INFO, String.format("Sent unsubscribe message id: %s, d: %s, q: %s, r: %s.",
+                message.variableHeader().messageId(),
+                message.fixedHeader().isDup(),
+                message.fixedHeader().qosLevel(),
+                message.fixedHeader().isRetain()
+        ));
 
         return unsubscribeFuture;
     }
@@ -335,8 +360,19 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 
         this.writeAndFlush(message);
 
-        logger.log(Level.INFO, String.format("Sent disconnection message %s", message));
-        System.out.println(String.format("Sent disconnection message %s", message));
+        logger.log(Level.INFO, String.format(
+                "Sent disconnection message reason: %s, d: %s, q: %s, r: %s.",
+                mqttDisconnectVariableHeader.reasonCode(),
+                message.fixedHeader().isDup(),
+                message.fixedHeader().qosLevel(),
+                message.fixedHeader().isRetain()
+        ));
+        System.out.println(String.format("Sent disconnection message reason: %s, d: %s, q: %s, r: %s.",
+                mqttDisconnectVariableHeader.reasonCode(),
+                message.fixedHeader().isDup(),
+                message.fixedHeader().qosLevel(),
+                message.fixedHeader().isRetain()
+        ));
     }
 
     public void shutdown() {
@@ -350,16 +386,16 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 
     private ChannelFuture writeAndFlush(Object message) {
         if (this.channel == null) {
-            logger.log(Level.INFO, String.format("Channel is null"));
+            logger.log(Level.WARNING, String.format("Channel is null"));
             System.out.println(String.format("Channel is null"));
             return null;
         }
         if (this.channel.isActive()) {
             return this.channel.writeAndFlush(message);
         }
-        logger.log(Level.INFO, String.format("Channel is closed"));
-        System.out.println(String.format("Channel is closed"));
-        return this.channel.newFailedFuture(new RuntimeException("Channel is closed"));
+        logger.log(Level.SEVERE, String.format("Cannot write and flush message. Channel is closed."));
+        System.out.println(String.format("Cannot write and flush message. Channel is closed."));
+        return this.channel.newFailedFuture(new RuntimeException("Cannot write and flush message. Channel is closed."));
     }
 
     private int getNewMessageId() {
@@ -368,76 +404,124 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
     }
 
     @Scheduled(fixedDelay = 20000, initialDelay = 20000)
-    public void retransmission() {
-        System.out.println("strart retransmission client");
+    public void retransmit() {
+        System.out.println(String.format("Strart retransmission in MqttClientImpl"));
+        logger.log(Level.FINE, String.format("Strart retransmission in MqttClientImpl"));
+
         int index = 1;
-        Iterator it;
         synchronized (this.pendingConfirmationSubscriptions) {
-            it = this.pendingConfirmationSubscriptions.entrySet().iterator();
-            while (it.hasNext()) {
-                Map.Entry pair = (Map.Entry) it.next();
-                this.writeAndFlush(pair.getValue());
-                System.out.println(String.format("Retransmission pending confirmation subscription. %s from %s. Message %s", index, this.pendingConfirmationSubscriptions.size(), pair.getValue()));
-                logger.log(Level.INFO, String.format("Retransmission pending confirmation subscription. %s from %s. Message %s", index, this.pendingConfirmationSubscriptions.size(), pair.getValue()));
+            System.out.println(String.format("Retransmission pending confirmation subscriptions. Amount subscription messages is %s", this.pendingConfirmationSubscriptions.size()));
+            logger.log(Level.FINE, String.format("Retransmission pending confirmation subscriptions. Amount subscription messages is %s", this.pendingConfirmationSubscriptions.size()));
+            for (Map.Entry<Integer, MqttSubscribeMessage> pair : this.pendingConfirmationSubscriptions.entrySet()) {
+                if (channel.isActive()) {
+                    this.writeAndFlush(pair.getValue());
+
+                    System.out.println(String.format(
+                            "Retransmission pending confirmation subscription. %s from %s. Message id: %s",
+                            index, this.pendingConfirmationSubscriptions.size(),
+                            pair.getValue().variableHeader().messageId()
+                    ));
+                    logger.log(Level.FINE, String.format(
+                            "Retransmission pending confirmation subscription. %s from %s. Message id: %s",
+                            index,
+                            this.pendingConfirmationSubscriptions.size(),
+                            pair.getValue().variableHeader().messageId()
+                    ));
+
+                }
                 index++;
             }
-        }
 
-        index = 1;
-        synchronized (this.pendingConfirmationUnsubscriptions) {
-            it = this.pendingConfirmationUnsubscriptions.entrySet().iterator();
-            while (it.hasNext()) {
-                Map.Entry pair = (Map.Entry) it.next();
-                this.writeAndFlush(pair.getValue());
-                System.out.println(String.format("Retransmission pending confirmation unsubscription. %s from %s. Message %s", index, this.pendingConfirmationUnsubscriptions.size(), pair.getValue()));
-                logger.log(Level.INFO, String.format("Retransmission pending confirmation unsubscription. %s from %s. Message %s", index, this.pendingConfirmationUnsubscriptions.size(), pair.getValue()));
-                index++;
+            index = 1;
+            synchronized (this.pendingConfirmationUnsubscriptions) {
+                System.out.println(String.format("Retransmission pending confirmation unsubscriptions. Amount unsubscription messages is %s", this.pendingConfirmationUnsubscriptions.size()));
+                logger.log(Level.FINE, String.format("Retransmission pending confirmation unsubscriptions. Amount unsubscription messages is %s", this.pendingConfirmationUnsubscriptions.size()));
+                for (Map.Entry<Integer, MqttUnsubscribeMessage> pair : this.pendingConfirmationUnsubscriptions.entrySet()) {
+                    if (channel.isActive()) {
+                        this.writeAndFlush(pair.getValue());
+
+                        System.out.println(String.format(
+                                "Retransmission pending confirmation unsubscription. %s from %s. Message id: %s",
+                                index, this.pendingConfirmationUnsubscriptions.size(),
+                                pair.getValue().variableHeader().messageId()
+                        ));
+                        logger.log(Level.FINE, String.format(
+                                "Retransmission pending confirmation unsubscription. %s from %s. Message id: %s",
+                                index, this.pendingConfirmationUnsubscriptions.size(),
+                                pair.getValue().variableHeader().messageId()
+                        ));
+                    }
+                    index++;
+                }
             }
-        }
 
-        index = 1;
-        synchronized (this.pendingPubRec) {
-            it = this.pendingPubRec.entrySet().iterator();
-            while (it.hasNext()) {
-                Map.Entry pair = (Map.Entry) it.next();
-                MqttPublishMessage originalMessage = (MqttPublishMessage) pair.getValue();
-                MqttFixedHeader fixedHeader = new MqttFixedHeader(
-                        originalMessage.fixedHeader().messageType(),
-                        true,
-                        originalMessage.fixedHeader().qosLevel(),
-                        originalMessage.fixedHeader().isRetain(),
-                        originalMessage.fixedHeader().remainingLength()
-                );
-                MqttPublishMessage message = new MqttPublishMessage(fixedHeader, originalMessage.variableHeader(), originalMessage.payload());
+            index = 1;
+            synchronized (this.pendingPubRec) {
+                System.out.println(String.format("Retransmission publish messages for pending PUBREC publish messages (QoS2). Amount publish messages is %s", this.pendingPubRec.size()));
+                logger.log(Level.FINE, String.format("Retransmission publish messages for pending PUBREC publish messages (QoS2). Amount publish messages is %s", this.pendingPubRec.size()));
+                for (Map.Entry<Integer, MqttPublishMessage> pair : this.pendingPubRec.entrySet()) {
+                    if (channel.isActive()) {
+                        MqttPublishMessage originalMessage = (MqttPublishMessage) pair.getValue();
+                        MqttFixedHeader fixedHeader = new MqttFixedHeader(
+                                originalMessage.fixedHeader().messageType(),
+                                true, //change Dup on true
+                                originalMessage.fixedHeader().qosLevel(),
+                                originalMessage.fixedHeader().isRetain(),
+                                originalMessage.fixedHeader().remainingLength()
+                        );
+                        MqttPublishMessage message = new MqttPublishMessage(fixedHeader, originalMessage.variableHeader(), originalMessage.payload());
 
-                this.writeAndFlush(message);
-                System.out.println(String.format("Retransmission pending PUBREC publish message (QoS2). %s from %s. Message %s", index, this.pendingPubRec.size(), message));
-                logger.log(Level.INFO, String.format("Retransmission pending PUBREC publish message (QoS2). %s from %s. Message %s", index, this.pendingPubRec.size(), message));
-                index++;
+                        this.writeAndFlush(message);
+                        System.out.println(String.format(
+                                "Retransmission publish message for pending PUBREC publish message (QoS2). %s from %s. Message id: %s",
+                                index, this.pendingPubRec.size(),
+                                message.variableHeader().packetId()
+                        ));
+                        logger.log(Level.FINE, String.format(
+                                "Retransmission publish message for pending PUBREC publish message (QoS2). %s from %s. Message id: %s",
+                                index, this.pendingPubRec.size(),
+                                message.variableHeader().packetId()
+                        ));
+                    }
+                    index++;
+                }
             }
-        }
 
-        index = 1;
-        synchronized (this.pendingPubAck) {
-            it = this.pendingPubAck.entrySet().iterator();
-            while (it.hasNext()) {
-                Map.Entry pair = (Map.Entry) it.next();
-                MqttPublishMessage originalMessage = (MqttPublishMessage) pair.getValue();
-                MqttFixedHeader fixedHeader = new MqttFixedHeader(
-                        originalMessage.fixedHeader().messageType(),
-                        true,
-                        originalMessage.fixedHeader().qosLevel(),
-                        originalMessage.fixedHeader().isRetain(),
-                        originalMessage.fixedHeader().remainingLength()
-                );
-                MqttPublishMessage message = new MqttPublishMessage(fixedHeader, originalMessage.variableHeader(), originalMessage.payload());
+            index = 1;
+            synchronized (this.pendingPubAck) {
+                System.out.println(String.format("Retransmission publish messages for pending PUBACK publish messages (QoS1). Amount publish messages is %s", this.pendingPubAck.size()));
+                logger.log(Level.FINE, String.format("Retransmission publish messages for pending PUBACK publish messages (QoS1). Amount publish messages is %s", this.pendingPubAck.size()));
+                for (Map.Entry<Integer, MqttPublishMessage> pair : this.pendingPubAck.entrySet()) {
+                    if (channel.isActive()) {
+                        MqttPublishMessage originalMessage = (MqttPublishMessage) pair.getValue();
+                        MqttFixedHeader fixedHeader = new MqttFixedHeader(
+                                originalMessage.fixedHeader().messageType(),
+                                true, //change Dup on true
+                                originalMessage.fixedHeader().qosLevel(),
+                                originalMessage.fixedHeader().isRetain(),
+                                originalMessage.fixedHeader().remainingLength()
+                        );
+                        MqttPublishMessage message = new MqttPublishMessage(fixedHeader, originalMessage.variableHeader(), originalMessage.payload());
 
-                this.writeAndFlush(message);
-                System.out.println(String.format("Retransmission pending PUBACK publish message (QoS1). %s from %s. Message %s", index, this.pendingPubAck.size(), message));
-                logger.log(Level.INFO, String.format("Retransmission pending PUBACK publish message (QoS1). %s from %s. Message %s", index, this.pendingPubAck.size(), message));
-                index++;
+                        this.writeAndFlush(message);
+                        System.out.println(String.format(
+                                "Retransmission publish message for pending PUBACK publish message (QoS1). %s from %s. Message id: %s",
+                                index,
+                                this.pendingPubAck.size(),
+                                message.variableHeader().packetId()
+                        ));
+                        logger.log(Level.FINE, String.format(
+                                "Retransmission publish message for pending PUBACK publish message (QoS1). %s from %s. Message id: %s",
+                                index,
+                                this.pendingPubAck.size(),
+                                message.variableHeader().packetId()
+                        ));
+                    }
+                    index++;
+                }
             }
+            System.out.println(String.format("End retransmission in MqttClientImpl"));
+            logger.log(Level.FINE, String.format("End retransmission in MqttClientImpl"));
         }
-        System.out.println("end retransmission client");
     }
 }

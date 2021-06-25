@@ -23,22 +23,57 @@
  */
 package ru.maxeltr.mqttClient.Service;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonIOException;
+import io.netty.buffer.Unpooled;
+import io.netty.handler.codec.mqtt.MqttQoS;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.springframework.scheduling.annotation.Async;
+import ru.maxeltr.mqttClient.Config.Config;
+import ru.maxeltr.mqttClient.Mqtt.MqttClientImpl;
 
 /**
- * Executes processes on the host it is running on.
- * processes runs by command receives in the message payload.
+ * Executes processes on the host it is running on. processes runs by command
+ * receives in the message payload.
  */
 public class CommandService {
 
     private static final Logger logger = Logger.getLogger(CommandService.class.getName());
 
-    public CommandService() {
+    MqttClientImpl mqttClient;
+
+    Config config;
+
+    public CommandService(MqttClientImpl mqttClient, Config config) {
+        this.mqttClient = mqttClient;
+        this.config = config;
+    }
+
+    @Async
+    public void execute(Command command) {
+        command.setStatus("response");
+        String location = this.config.getProperty("location", "");
+        String clientId = this.config.getProperty("clientId", "");
+        StringBuilder cmdTopic = new StringBuilder();
+        cmdTopic.append(location);
+        cmdTopic.append("/");
+        cmdTopic.append(clientId);
+        cmdTopic.append("/");
+        cmdTopic.append("cmd");
+        cmdTopic.append("/");
+        cmdTopic.append("resp");
+
+        Gson gson = new Gson();
+        try {
+            String jsonCommand = gson.toJson(command);
+            this.mqttClient.publish(cmdTopic.toString(), Unpooled.wrappedBuffer(jsonCommand.getBytes()), MqttQoS.AT_MOST_ONCE, false);
+        } catch (JsonIOException ex) {
+            logger.log(Level.SEVERE, null, ex);
+        }
 
     }
 
@@ -47,27 +82,27 @@ public class CommandService {
         logger.log(Level.INFO, String.format("CommandService. Start execute."));
 
         String line;
-		String result = "";
-		ProcessBuilder pb;
-		try {
-			pb = new ProcessBuilder(app, arguments);
-			pb.redirectErrorStream(true);
-			Process p = pb.start();
-			BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
-			while(true) {
-				line = br.readLine();
-				if (line == null) {
-					break;
-				}
-				result += line + "\n";
-			}
-		} catch (IOException e) {
-			System.out.println(String.format("Exception %s.", e.getMessage()));
-		}
+        String result = "";
+        ProcessBuilder pb;
+        try {
+            pb = new ProcessBuilder(app, arguments);
+            pb.redirectErrorStream(true);
+            Process p = pb.start();
+            BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
+            while (true) {
+                line = br.readLine();
+                if (line == null) {
+                    break;
+                }
+                result += line + "\n";
+            }
+        } catch (IOException e) {
+            System.out.println(String.format("Exception %s.", e.getMessage()));
+        }
 
-                logger.log(Level.INFO, String.format("CommandService. End execute."));
+        logger.log(Level.INFO, String.format("CommandService. End execute."));
 
-		return result;
+        return result;
 
     }
 }

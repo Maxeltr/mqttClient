@@ -92,8 +92,8 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
         MqttFixedHeader connectFixedHeader = new MqttFixedHeader(MqttMessageType.CONNECT, false, MqttQoS.AT_MOST_ONCE, false, 0);
 
         MqttConnectVariableHeader connectVariableHeader = new MqttConnectVariableHeader(
-                this.config.getProperty("protocolName", ""),
-                Integer.parseInt(this.config.getProperty("protocolVersion", "")),
+                this.config.getProperty("protocolName", "MQTT"),
+                Integer.parseInt(this.config.getProperty("protocolVersion", "4")),
                 Boolean.parseBoolean(this.config.getProperty("hasUserName", "true")), //Boolean.getBoolean("hasUserName"),
                 Boolean.parseBoolean(this.config.getProperty("hasPassword", "true")), //Boolean.getBoolean("hasPassword"),
                 Boolean.parseBoolean(this.config.getProperty("willRetain", "false")), //Boolean.getBoolean("willRetain"),
@@ -115,8 +115,8 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
 
         MqttConnectMessage connectMessage = new MqttConnectMessage(connectFixedHeader, connectVariableHeader, connectPayload);
         ctx.writeAndFlush(connectMessage);
-        System.out.println(String.format("Sent connect message %s.", connectMessage));
-        logger.log(Level.INFO, String.format("Sent connect message %s.", connectMessage));
+        System.out.println(String.format("Sent connect message %s.", connectMessage.variableHeader()));
+        logger.log(Level.INFO, String.format("Sent connect message %s.", connectMessage.variableHeader()));
     }
 
     private void handleConnack(Channel channel, MqttConnAckMessage message) {
@@ -129,8 +129,8 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
                 if (!future.isDone()) {
                     future.setSuccess(message);
                 }
-                logger.log(Level.INFO, String.format("Received CONNACK message. Connection accepted %s.", message));
-                System.out.println(String.format("Received CONNACK message. Connection accepted %s.", message));
+                logger.log(Level.INFO, String.format("Received CONNACK message. Connection accepted %s.", message.variableHeader()));
+                System.out.println(String.format("Received CONNACK message. Connection accepted %s.", message.variableHeader()));
 
                 channel.flush();
                 break;
@@ -145,8 +145,8 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
                 if (!future.isDone()) {
                     future.setSuccess(message);
                 }
-                logger.log(Level.INFO, String.format("Received CONNACK message. Connection refused %s.", message));
-                System.out.println(String.format("Received CONNACK message. Connection refused %s.", message));
+                logger.log(Level.INFO, String.format("Received CONNACK message. Connection refused %s.", message.variableHeader()));
+                System.out.println(String.format("Received CONNACK message. Connection refused %s.", message.variableHeader()));
 
                 channel.close();
                 // Don't start reconnect logic here

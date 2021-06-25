@@ -33,6 +33,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.LogManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.context.event.ApplicationEventMulticaster;
 import org.springframework.context.event.SimpleApplicationEventMulticaster;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
@@ -46,6 +47,7 @@ import ru.maxeltr.mqttClient.Mqtt.MqttPingHandler;
 import ru.maxeltr.mqttClient.Mqtt.MqttPublishHandler;
 import ru.maxeltr.mqttClient.Mqtt.MqttSubscriptionHandler;
 import ru.maxeltr.mqttClient.Mqtt.PromiseBroker;
+import ru.maxeltr.mqttClient.Service.CommandService;
 import ru.maxeltr.mqttClient.Service.MessageHandler;
 
 /**
@@ -92,11 +94,6 @@ public class AppAnnotationConfig {
     }
 
     @Bean
-    public MessageHandler messageHandler() {
-        return new MessageHandler();
-    }
-
-    @Bean
     public MqttDecoder mqttDecoder() {
         return new MqttDecoder();
     }
@@ -117,7 +114,7 @@ public class AppAnnotationConfig {
     }
 
     @Bean
-    public MqttPublishHandler mqttPublishHandler(PromiseBroker promiseBroker, MessageHandler messageHandler, Config config) {
+    public MqttPublishHandler mqttPublishHandler(PromiseBroker promiseBroker, @Lazy MessageHandler messageHandler, Config config) {
         return new MqttPublishHandler(promiseBroker, messageHandler, config);
     }
 
@@ -147,6 +144,16 @@ public class AppAnnotationConfig {
     @Bean
     public MqttClientImpl mqttClientImpl(MqttChannelInitializer mqttChannelInitializer, Config config, PromiseBroker promiseBroker) {
         return new MqttClientImpl(mqttChannelInitializer, config, promiseBroker);
+    }
+
+    @Bean
+    public CommandService commandService(MqttClientImpl mqttClient, Config config) {
+        return new CommandService(mqttClient, config);
+    }
+
+    @Bean
+    public MessageHandler messageHandler(CommandService commandService, Config config) {
+        return new MessageHandler(commandService, config);
     }
 
     /**

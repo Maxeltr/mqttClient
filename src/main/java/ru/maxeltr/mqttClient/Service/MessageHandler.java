@@ -23,10 +23,19 @@
  */
 package ru.maxeltr.mqttClient.Service;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonSyntaxException;
 import io.netty.handler.codec.mqtt.MqttMessage;
+import io.netty.handler.codec.mqtt.MqttPublishMessage;
+import io.netty.handler.codec.mqtt.MqttPublishVariableHeader;
+import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.springframework.scheduling.annotation.Async;
+import ru.maxeltr.mqttClient.Config.Config;
+import java.nio.charset.StandardCharsets;
 
 /**
  *
@@ -36,14 +45,50 @@ public class MessageHandler {
 
     private static final Logger logger = Logger.getLogger(MessageHandler.class.getName());
 
-    public MessageHandler() {
+    Config config;
 
+    CommandService commandService;
+
+    public MessageHandler(CommandService commandService, Config config) {
+        this.config = config;
+        this.commandService = commandService;
     }
 
     @Async
-    public void handleMessage(MqttMessage message) throws InterruptedException {
-        logger.log(Level.INFO, String.format("MessageHandler. Start handle message %s.", message));
-        Thread.sleep(5000);
-        logger.log(Level.INFO, String.format("MessageHandler. End handle message %s.", message));
+    public void handleMessage(MqttPublishMessage message) throws InterruptedException {
+        logger.log(Level.INFO, String.format("MessageHandler. Start handle publish message id: %s.", message.variableHeader().packetId()));
+        String location = config.getProperty("location", "");
+        String clientId = config.getProperty("clientId", "");
+        MqttPublishVariableHeader variableHeader = (MqttPublishVariableHeader) message.variableHeader();
+        String topic = variableHeader.topicName();
+        String[] topicLevels = topic.split("/");
+
+        if (topicLevels[0] == null || !topicLevels[0].equalsIgnoreCase(location)) {
+            logger.log(Level.WARNING, String.format("Topic level location \"%s\" is not match configuration \"%s\".", topicLevels[0], location));
+            return;
+        }
+
+        if (topicLevels[1] == null || !topicLevels[1].equalsIgnoreCase(clientId)) {
+            logger.log(Level.WARNING, String.format("Topic level clientId \"%s\" is not match configuration \"%s\".", topicLevels[1], clientId));
+            return;
+        }
+
+        if (topicLevels[2] != null || topicLevels[2].equalsIgnoreCase("cmd")) {
+
+            String payload = message.payload().toString(Charset.forName("UTF-8"));
+//            String payload = message.payload().toString();
+            System.out.println(String.format(payload));
+            GsonBuilder gb = new GsonBuilder();
+            Gson gson = gb.create();
+            try {
+                Command command = gson.fromJson(payload, Command.class);
+                this.commandService.execute(command);
+            } catch (JsonSyntaxException ex) {
+                logger.log(Level.SEVERE, null, ex);
+            }
+
+
+        }
+
     }
 }
