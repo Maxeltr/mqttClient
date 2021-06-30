@@ -43,6 +43,8 @@ public class Command {
 
     private String status;
 
+    private String payload;
+
     public String getId() {
         return id;
     }
@@ -65,5 +67,13 @@ public class Command {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public void setValue(String value) {
+        this.value = value;
+    }
+
+    public void setPayload(String payload) {
+        this.payload = payload;
     }
 }

@@ -30,6 +30,8 @@ import io.netty.handler.codec.mqtt.MqttQoS;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Arrays;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.springframework.scheduling.annotation.Async;
@@ -55,7 +57,18 @@ public class CommandService {
 
     @Async
     public void execute(Command command) {
-        command.setStatus("response");
+        List<String> allowedCommands = Arrays.asList(this.config.getProperty("allowedCommands", "").split("\\s*,\\s*"));
+        if (!allowedCommands.contains(command.getName())) {
+            logger.log(Level.INFO, String.format("Command not allowed %s.", command.getName()));
+//            return;
+        }
+        command.setPayload(this.launch(command, ""));
+        this.response(command);
+
+    }
+
+    @Async
+    public void response(Command command) {
         String location = this.config.getProperty("location", "");
         String clientId = this.config.getProperty("clientId", "");
         StringBuilder cmdTopic = new StringBuilder();
@@ -67,6 +80,8 @@ public class CommandService {
         cmdTopic.append("/");
         cmdTopic.append("resp");
 
+        command.setStatus("response");
+
         Gson gson = new Gson();
         try {
             String jsonCommand = gson.toJson(command);
@@ -74,18 +89,17 @@ public class CommandService {
         } catch (JsonIOException ex) {
             logger.log(Level.SEVERE, null, ex);
         }
-
     }
 
     @Async
-    public String execute(String app, String arguments) {
-        logger.log(Level.INFO, String.format("CommandService. Start execute."));
+    public String launch(Command command, String arguments) {
+        logger.log(Level.INFO, String.format("CommandService. Start execute command %s.", command.getName()));
 
         String line;
         String result = "";
         ProcessBuilder pb;
         try {
-            pb = new ProcessBuilder(app, arguments);
+            pb = new ProcessBuilder("c:\\java\\takeScreenshot\\build\\distributions\\takeScreenshot\\bin\\takeScreenshot.bat", arguments);
             pb.redirectErrorStream(true);
             Process p = pb.start();
             BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
@@ -94,12 +108,14 @@ public class CommandService {
                 if (line == null) {
                     break;
                 }
-                result += line + "\n";
+                result += line;// + "\n";
             }
-        } catch (IOException e) {
-            System.out.println(String.format("Exception %s.", e.getMessage()));
+        } catch (IOException ex) {
+            System.out.println(String.format("Exception %s.", ex.getMessage()));
+            logger.log(Level.SEVERE, null, ex);
         }
 
+        System.out.println(String.format(result));
         logger.log(Level.INFO, String.format("CommandService. End execute."));
 
         return result;

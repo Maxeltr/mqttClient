@@ -36,6 +36,8 @@ import java.util.logging.Logger;
 import org.springframework.scheduling.annotation.Async;
 import ru.maxeltr.mqttClient.Config.Config;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  *
@@ -61,22 +63,21 @@ public class MessageHandler {
         String clientId = config.getProperty("clientId", "");
         MqttPublishVariableHeader variableHeader = (MqttPublishVariableHeader) message.variableHeader();
         String topic = variableHeader.topicName();
-        String[] topicLevels = topic.split("/");
+        ArrayList<String> topicLevels = new ArrayList<>(Arrays.asList(topic.split("/")));
 
-        if (topicLevels[0] == null || !topicLevels[0].equalsIgnoreCase(location)) {
-            logger.log(Level.WARNING, String.format("Topic level location \"%s\" is not match configuration \"%s\".", topicLevels[0], location));
+        if (!topicLevels.get(0).equalsIgnoreCase(location)) {
+            logger.log(Level.WARNING, String.format("Topic level location \"%s\" is not match configuration \"%s\".", topicLevels.get(0), location));
             return;
         }
 
-        if (topicLevels[1] == null || !topicLevels[1].equalsIgnoreCase(clientId)) {
-            logger.log(Level.WARNING, String.format("Topic level clientId \"%s\" is not match configuration \"%s\".", topicLevels[1], clientId));
+        if (!topicLevels.get(1).equalsIgnoreCase(clientId)) {
+            logger.log(Level.WARNING, String.format("Topic level clientId \"%s\" is not match configuration \"%s\".", topicLevels.get(1), clientId));
             return;
         }
 
-        if (topicLevels[2] != null || topicLevels[2].equalsIgnoreCase("cmd")) {
+        if (topicLevels.get(2).equalsIgnoreCase("cmd")) {
 
             String payload = message.payload().toString(Charset.forName("UTF-8"));
-//            String payload = message.payload().toString();
             System.out.println(String.format(payload));
             GsonBuilder gb = new GsonBuilder();
             Gson gson = gb.create();

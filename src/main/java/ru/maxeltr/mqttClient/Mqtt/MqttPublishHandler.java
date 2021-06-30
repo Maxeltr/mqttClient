@@ -288,15 +288,15 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
 //                System.out.println(String.format(message.variableHeader().topicName() + " " + message.payload().toString(Charset.forName("UTF-8"))));
 
                 //TODO handle publish Message
-                System.out.println(String.format("handlePublish: AT_MOST_ONCE. topicName - " + message.variableHeader().topicName() + " payload - " + message.payload().toString(Charset.forName("UTF-8"))));
-                System.out.println(String.format("Call MessageHandler."));
-                logger.log(Level.INFO, String.format("Call MessageHandler."));
+                //System.out.println(String.format("handlePublish: AT_MOST_ONCE. topicName - " + message.variableHeader().topicName() + " payload - " + message.payload().toString(Charset.forName("UTF-8"))));
+                //System.out.println(String.format("Call MessageHandler."));
+                //logger.log(Level.INFO, String.format("Call MessageHandler."));
                 this.messageHandler.handleMessage(message);
-                System.out.println(String.format("Return from MessageHandler."));
-                logger.log(Level.INFO, String.format("Return from MessageHandler."));
+                //System.out.println(String.format("Return from MessageHandler."));
+                //logger.log(Level.INFO, String.format("Return from MessageHandler."));
                 break;
             case AT_LEAST_ONCE:
-                System.out.println(String.format("handlePublish: AT_LEAST_ONCE. topicName - " + message.variableHeader().topicName() + " payload - " + message.payload().toString(Charset.forName("UTF-8"))));
+                //System.out.println(String.format("handlePublish: AT_LEAST_ONCE. topicName - " + message.variableHeader().topicName() + " payload - " + message.payload().toString(Charset.forName("UTF-8"))));
 
                 //TODO handle publish Message
                 this.messageHandler.handleMessage(message);
@@ -324,7 +324,7 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
 
                 break;
             case EXACTLY_ONCE:
-                System.out.println(String.format("handlePublish: EXACTLY_ONCE. topicName - " + message.variableHeader().topicName() + " payload - " + message.payload().toString(Charset.forName("UTF-8"))));
+                //System.out.println(String.format("handlePublish: EXACTLY_ONCE. topicName - " + message.variableHeader().topicName() + " payload - " + message.payload().toString(Charset.forName("UTF-8"))));
 
                 if (!this.pendingPubRel.containsKey(message.variableHeader().packetId())) {
                     this.pendingPubRel.put(message.variableHeader().packetId(), message);
