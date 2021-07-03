@@ -60,7 +60,11 @@ public class CommandService {
         List<String> allowedCommands = Arrays.asList(this.config.getProperty("allowedCommands", "").split("\\s*,\\s*"));
         if (!allowedCommands.contains(command.getName())) {
             logger.log(Level.INFO, String.format("Command not allowed %s.", command.getName()));
-//            return;
+            command.setStatus("response");
+            command.setResult("fail");
+            command.setValue("Command is not allowed");
+            this.response(command);
+            return;
         }
         command.setPayload(this.launch(command, ""));
         this.response(command);
@@ -94,12 +98,18 @@ public class CommandService {
     @Async
     public String launch(Command command, String arguments) {
         logger.log(Level.INFO, String.format("CommandService. Start execute command %s.", command.getName()));
+        String location = config.getProperty("commandFolder", "");
+        if (location.trim().isEmpty()) {
+            logger.log(Level.WARNING, String.format("Invalid commandFolder property"));
+            System.out.println(String.format("Invalid commandFolder property"));
+            return "Invalid commandFolder property";
+        }
 
         String line;
         String result = "";
         ProcessBuilder pb;
         try {
-            pb = new ProcessBuilder("c:\\java\\takeScreenshot\\build\\distributions\\takeScreenshot\\bin\\takeScreenshot.bat", arguments);
+            pb = new ProcessBuilder(location + "\\takeScreenshot\\build\\distributions\\takeScreenshot\\bin\\takeScreenshot.bat", arguments);
             pb.redirectErrorStream(true);
             Process p = pb.start();
             BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));

@@ -45,6 +45,8 @@ public class Command {
 
     private String payload;
 
+    private String result;
+
     public String getId() {
         return id;
     }
@@ -65,15 +67,27 @@ public class Command {
         return status;
     }
 
-    public void setStatus(String status) {
-        this.status = status;
+    public String getPayload() {
+        return payload;
+    }
+
+    public String getResult() {
+        return result;
     }
 
     public void setValue(String value) {
         this.value = value;
     }
+    
+    public void setStatus(String status) {
+        this.status = status;
+    }
 
     public void setPayload(String payload) {
         this.payload = payload;
+    }
+
+    public void setResult(String result) {
+        this.result = result;
     }
 }
