@@ -95,7 +95,7 @@ public class AppAnnotationConfig {
 
     @Bean
     public MqttDecoder mqttDecoder() {
-        return new MqttDecoder();
+        return new MqttDecoder(8092000);
     }
 
     @Bean

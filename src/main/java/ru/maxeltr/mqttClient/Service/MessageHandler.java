@@ -29,6 +29,10 @@ import com.google.gson.JsonSyntaxException;
 import io.netty.handler.codec.mqtt.MqttMessage;
 import io.netty.handler.codec.mqtt.MqttPublishMessage;
 import io.netty.handler.codec.mqtt.MqttPublishVariableHeader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.logging.Level;
@@ -38,6 +42,7 @@ import ru.maxeltr.mqttClient.Config.Config;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 
 /**
  *
@@ -65,30 +70,52 @@ public class MessageHandler {
         String topic = variableHeader.topicName();
         ArrayList<String> topicLevels = new ArrayList<>(Arrays.asList(topic.split("/")));
 
-        if (!topicLevels.get(0).equalsIgnoreCase(location)) {
-            logger.log(Level.WARNING, String.format("Topic level location \"%s\" is not match configuration \"%s\".", topicLevels.get(0), location));
-            return;
-        }
+        if (topicLevels.get(0).equalsIgnoreCase(location)) {
+//            logger.log(Level.WARNING, String.format("Topic level location \"%s\" is not match configuration \"%s\".", topicLevels.get(0), location));
+//            return;
+            if (topicLevels.get(1).equalsIgnoreCase(clientId)) {
+//                logger.log(Level.WARNING, String.format("Topic level clientId \"%s\" is not match configuration \"%s\".", topicLevels.get(1), clientId));
+//                return;
 
-        if (!topicLevels.get(1).equalsIgnoreCase(clientId)) {
-            logger.log(Level.WARNING, String.format("Topic level clientId \"%s\" is not match configuration \"%s\".", topicLevels.get(1), clientId));
-            return;
-        }
+                if (topicLevels.get(2).equalsIgnoreCase("cmd")) {
+                    if (topicLevels.get(3).equalsIgnoreCase("req")) {
+                        String payload = message.payload().toString(Charset.forName("UTF-8"));
+                        GsonBuilder gb = new GsonBuilder();
+                        Gson gson = gb.create();
+                        try {
+                            Command command = gson.fromJson(payload, Command.class);
+                            this.commandService.execute(command);
+                        } catch (JsonSyntaxException ex) {
+                            logger.log(Level.SEVERE, null, ex);
+                        }
+                    } else {
 
-        if (topicLevels.get(2).equalsIgnoreCase("cmd")) {
+                        File file = new File("c:\\java\\mqttClient\\test.jpg");
+                        FileOutputStream fileOutputStream;
+                        try {
+                            fileOutputStream = new FileOutputStream(file);
+                            String payload = message.payload().toString(Charset.forName("UTF-8"));
+                            GsonBuilder gb = new GsonBuilder();
+                            Gson gson = gb.create();
+                            try {
+                                Command command = gson.fromJson(payload, Command.class);
+                                try {
+                                    fileOutputStream.write(Base64.getDecoder().decode(command.getPayload()));
+                                    fileOutputStream.close();
+                                } catch (IOException ex) {
+                                    Logger.getLogger(MessageHandler.class.getName()).log(Level.SEVERE, null, ex);
+                                }
 
-            String payload = message.payload().toString(Charset.forName("UTF-8"));
-            System.out.println(String.format(payload));
-            GsonBuilder gb = new GsonBuilder();
-            Gson gson = gb.create();
-            try {
-                Command command = gson.fromJson(payload, Command.class);
-                this.commandService.execute(command);
-            } catch (JsonSyntaxException ex) {
-                logger.log(Level.SEVERE, null, ex);
+                            } catch (JsonSyntaxException ex) {
+                                logger.log(Level.SEVERE, null, ex);
+                            }
+                        } catch (FileNotFoundException ex) {
+                            Logger.getLogger(MessageHandler.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+                    }
+
+                }
             }
-
-
         }
 
     }

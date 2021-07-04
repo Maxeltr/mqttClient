@@ -66,6 +66,8 @@ public class CommandService {
             this.response(command);
             return;
         }
+        command.setResult("ok");
+        command.setValue("");
         command.setPayload(this.launch(command, ""));
         this.response(command);
 
@@ -109,7 +111,7 @@ public class CommandService {
         String result = "";
         ProcessBuilder pb;
         try {
-            pb = new ProcessBuilder(location + "\\takeScreenshot\\build\\distributions\\takeScreenshot\\bin\\takeScreenshot.bat", arguments);
+            pb = new ProcessBuilder(location + "\\takeScreenshot\\bin\\takeScreenshot.bat", arguments);
             pb.redirectErrorStream(true);
             Process p = pb.start();
             BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
@@ -125,7 +127,7 @@ public class CommandService {
             logger.log(Level.SEVERE, null, ex);
         }
 
-        System.out.println(String.format(result));
+//        System.out.println(String.format(result));
         logger.log(Level.INFO, String.format("CommandService. End execute."));
 
         return result;

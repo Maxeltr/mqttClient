@@ -37,6 +37,8 @@ public class Command {
 
     private String name;
 
+    private String arguments;
+
     private String value;
 
     private String timestamp;
@@ -53,6 +55,10 @@ public class Command {
 
     public String getName() {
         return name;
+    }
+
+    public String getArguments() {
+        return arguments;
     }
 
     public String getValue() {
@@ -78,7 +84,7 @@ public class Command {
     public void setValue(String value) {
         this.value = value;
     }
-    
+
     public void setStatus(String status) {
         this.status = status;
     }

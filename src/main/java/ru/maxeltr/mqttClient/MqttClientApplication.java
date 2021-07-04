@@ -54,6 +54,7 @@ public class MqttClientApplication {
 //        m.put("#", MqttQoS.AT_MOST_ONCE.value());
         m.put("test", MqttQoS.AT_LEAST_ONCE);
         m.put(cmdTopic.toString(), MqttQoS.AT_MOST_ONCE);
+        m.put("hm/dsktpClient/cmd/resp", MqttQoS.AT_MOST_ONCE);
 //        m.put("test/qw", MqttQoS.AT_MOST_ONCE.value());
 //        m.put("$SYS/broker/clients/connected", MqttQoS.AT_MOST_ONCE.value());
         Promise<MqttSubAckMessage> subResult = mqttClientImpl.subscribe(m);
@@ -62,7 +63,8 @@ public class MqttClientApplication {
 //        System.out.println(String.format("main " + "MqttSubscriptionResult %s.%n", res.variableHeader().messageId()));
 
         Thread.sleep(2000);
-//        mqttClientImpl.publish("test", Unpooled.wrappedBuffer("test11april".getBytes()), MqttQoS.EXACTLY_ONCE, false);
+        String com = "{" + "\"id\"" + ":4," + "\"name\"" +":" + "\"takeScreenshot\"" + "}";
+        mqttClientImpl.publish("hm/dsktpClient/cmd/req", Unpooled.wrappedBuffer(com.getBytes()), MqttQoS.AT_MOST_ONCE, false);
         Thread.sleep(2000);
 //        for( IntObjectMap.PrimitiveEntry<MqttSubscribeMessage> v: mqttClientImpl.waitingSubscriptions.entries()) {
 //            System.out.println(String.format("method main. waitingSubscriptions. key %s value %s", v.key(), v.value()));
