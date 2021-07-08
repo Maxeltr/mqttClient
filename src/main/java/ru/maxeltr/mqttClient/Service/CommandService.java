@@ -50,32 +50,22 @@ public class CommandService {
 
     Config config;
 
+    String commandFolder;
+
+    String cmdTopic;
+
     public CommandService(MqttClientImpl mqttClient, Config config) {
         this.mqttClient = mqttClient;
         this.config = config;
-    }
 
-    @Async
-    public void execute(Command command) {
-        List<String> allowedCommands = Arrays.asList(this.config.getProperty("allowedCommands", "").split("\\s*,\\s*"));
-        if (!allowedCommands.contains(command.getName())) {
-            logger.log(Level.INFO, String.format("Command not allowed %s.", command.getName()));
-            command.setStatus("response");
-            command.setResult("fail");
-            command.setValue("Command is not allowed");
-            this.response(command);
-            return;
+        this.commandFolder = config.getProperty("commandFolder", "");	//add
+        if (this.commandFolder.trim().isEmpty()) {
+            logger.log(Level.WARNING, String.format("Invalid commandFolder property"));
+            System.out.println(String.format("Invalid commandFolder property"));
+            throw new IllegalStateException("Invalid commandFolder property");
         }
-        command.setResult("ok");
-        command.setValue("");
-        command.setPayload(this.launch(command, ""));
-        this.response(command);
 
-    }
-
-    @Async
-    public void response(Command command) {
-        String location = this.config.getProperty("location", "");
+        String location = this.config.getProperty("location", "");	//add
         String clientId = this.config.getProperty("clientId", "");
         StringBuilder cmdTopic = new StringBuilder();
         cmdTopic.append(location);
@@ -85,33 +75,55 @@ public class CommandService {
         cmdTopic.append("cmd");
         cmdTopic.append("/");
         cmdTopic.append("resp");
+        this.cmdTopic = cmdTopic.toString();
+    }
 
+    @Async
+    public void execute(Command command) {
+        List<String> allowedCommands = Arrays.asList(this.config.getProperty("allowedCommands", "").split("\\s*,\\s*"));
+        if (!allowedCommands.contains(command.getName())) {
+            logger.log(Level.INFO, String.format("Command not allowed %s.", command.getName()));
+            command.setStatus("response");
+            command.setResult("fail");
+            command.setPayload("Command is not allowed");
+            this.sendResponse(command);
+            return;
+        }
+        command.setResult("ok");
+        command.setValue("");
+        command.setPayload(this.launch(command, ""));
+        this.sendResponse(command);
+
+    }
+
+    @Async
+    public void sendResponse(Command command) {
         command.setStatus("response");
 
         Gson gson = new Gson();
         try {
             String jsonCommand = gson.toJson(command);
-            this.mqttClient.publish(cmdTopic.toString(), Unpooled.wrappedBuffer(jsonCommand.getBytes()), MqttQoS.AT_MOST_ONCE, false);
+            this.mqttClient.publish(this.cmdTopic, Unpooled.wrappedBuffer(jsonCommand.getBytes()), MqttQoS.AT_MOST_ONCE, false);
         } catch (JsonIOException ex) {
             logger.log(Level.SEVERE, null, ex);
         }
     }
 
-    @Async
     public String launch(Command command, String arguments) {
         logger.log(Level.INFO, String.format("CommandService. Start execute command %s.", command.getName()));
-        String location = config.getProperty("commandFolder", "");
-        if (location.trim().isEmpty()) {
-            logger.log(Level.WARNING, String.format("Invalid commandFolder property"));
-            System.out.println(String.format("Invalid commandFolder property"));
-            return "Invalid commandFolder property";
+
+        String commandPath = config.getProperty(command.getName(), "");
+        if (commandPath.trim().isEmpty()) {
+            logger.log(Level.WARNING, String.format("Command path is empty"));
+            System.out.println(String.format("Command path is empty"));
+            return "Command path is empty";
         }
 
         String line;
         String result = "";
         ProcessBuilder pb;
         try {
-            pb = new ProcessBuilder(location + "\\takeScreenshot\\bin\\takeScreenshot.bat", arguments);
+            pb = new ProcessBuilder(this.commandFolder + commandPath, arguments);
             pb.redirectErrorStream(true);
             Process p = pb.start();
             BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
@@ -125,10 +137,11 @@ public class CommandService {
         } catch (IOException ex) {
             System.out.println(String.format("Exception %s.", ex.getMessage()));
             logger.log(Level.SEVERE, null, ex);
+            result = "An exception ocuured during execution of the command.";
         }
 
 //        System.out.println(String.format(result));
-        logger.log(Level.INFO, String.format("CommandService. End execute."));
+        logger.log(Level.INFO, String.format("CommandService. End execute command %s.", command.getName()));
 
         return result;
 
