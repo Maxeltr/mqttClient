@@ -1,6 +1,7 @@
 Configuration.xml
 mqttClient.log*
 commands
+*.jpg
 HELP.md
 .gradle
 build/

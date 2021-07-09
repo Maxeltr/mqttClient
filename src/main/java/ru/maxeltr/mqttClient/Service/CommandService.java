@@ -50,22 +50,13 @@ public class CommandService {
 
     Config config;
 
-    String commandFolder;
-
     String cmdTopic;
 
     public CommandService(MqttClientImpl mqttClient, Config config) {
         this.mqttClient = mqttClient;
         this.config = config;
 
-        this.commandFolder = config.getProperty("commandFolder", "");	//add
-        if (this.commandFolder.trim().isEmpty()) {
-            logger.log(Level.WARNING, String.format("Invalid commandFolder property"));
-            System.out.println(String.format("Invalid commandFolder property"));
-            throw new IllegalStateException("Invalid commandFolder property");
-        }
-
-        String location = this.config.getProperty("location", "");	//add
+        String location = this.config.getProperty("location", "");
         String clientId = this.config.getProperty("clientId", "");
         StringBuilder cmdTopic = new StringBuilder();
         cmdTopic.append(location);
@@ -112,18 +103,18 @@ public class CommandService {
     public String launch(Command command, String arguments) {
         logger.log(Level.INFO, String.format("CommandService. Start execute command %s.", command.getName()));
 
-        String commandPath = config.getProperty(command.getName(), "");
+        String commandPath = config.getProperty(command.getName() + "CommandPath", "");
         if (commandPath.trim().isEmpty()) {
-            logger.log(Level.WARNING, String.format("Command path is empty"));
-            System.out.println(String.format("Command path is empty"));
-            return "Command path is empty";
+            logger.log(Level.WARNING, String.format("%s command path is empty", command.getName()));
+            System.out.println(String.format("%s command path is empty", command.getName()));
+            return command.getName() + " command path is empty";
         }
 
         String line;
         String result = "";
         ProcessBuilder pb;
         try {
-            pb = new ProcessBuilder(this.commandFolder + commandPath, arguments);
+            pb = new ProcessBuilder(commandPath, arguments);
             pb.redirectErrorStream(true);
             Process p = pb.start();
             BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
@@ -137,7 +128,7 @@ public class CommandService {
         } catch (IOException ex) {
             System.out.println(String.format("Exception %s.", ex.getMessage()));
             logger.log(Level.SEVERE, null, ex);
-            result = "An exception ocuured during execution of the command.";
+            result = "An exception occured during execution of the command.";
         }
 
 //        System.out.println(String.format(result));

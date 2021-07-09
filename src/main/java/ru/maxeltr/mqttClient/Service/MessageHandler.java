@@ -91,21 +91,13 @@ public class MessageHandler {
                     } else {
 
                         File file = new File("c:\\java\\mqttClient\\test.jpg");
-//                        FileOutputStream fileOutputStream;
-                        try (FileOutputStream fileOutputStream = new FileOutputStream(file)) {
-//                            fileOutputStream = new FileOutputStream(file);
+                        try ( FileOutputStream fileOutputStream = new FileOutputStream(file)) {
                             String payload = message.payload().toString(Charset.forName("UTF-8"));
                             GsonBuilder gb = new GsonBuilder();
                             Gson gson = gb.create();
                             try {
                                 Command command = gson.fromJson(payload, Command.class);
-                                try {
-                                    fileOutputStream.write(Base64.getDecoder().decode(command.getPayload()));
-                                    fileOutputStream.close();
-                                } catch (IOException | IllegalArgumentException ex) {
-                                    Logger.getLogger(MessageHandler.class.getName()).log(Level.SEVERE, null, ex);
-                                }
-
+                                fileOutputStream.write(Base64.getDecoder().decode(command.getPayload()));
                             } catch (JsonSyntaxException ex) {
                                 logger.log(Level.SEVERE, null, ex);
                             }
