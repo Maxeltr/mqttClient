@@ -173,7 +173,8 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
         topicsAndQos.forEach((k, v) -> {
             MqttTopicSubscription subscription = new MqttTopicSubscription(k, v);
             subscriptions.add(subscription);
-
+            logger.log(Level.INFO, String.format("Subscribe on topic: %s", subscription.topicName()));
+            System.out.println(String.format("Subscribe on topic: %s", subscription.topicName()));
         });
 
         int id = getNewMessageId();
@@ -226,7 +227,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 
         this.writeAndFlush(message);
         System.out.println(String.format("Sent subscribe message %s.", message));
-        logger.log(Level.INFO, String.format("Sent subscribe message id: %s, d: %s, q: %s, r: %s.", message.variableHeader().messageId(), message.fixedHeader().isDup(), message.fixedHeader().qosLevel(), message.fixedHeader().isRetain()));
+        logger.log(Level.INFO, String.format("Sent subscribe message id: %s, d: %s, q: %s, r: %s. Message: %s", message.variableHeader().messageId(), message.fixedHeader().isDup(), message.fixedHeader().qosLevel(), message.fixedHeader().isRetain(), message));
 
         return subscribeFuture;
     }

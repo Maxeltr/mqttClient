@@ -112,12 +112,18 @@ public class CommandService {
 
         String line;
         String result = "";
-        ProcessBuilder pb;
+        ProcessBuilder pb = new ProcessBuilder(commandPath, arguments);
+        pb.redirectErrorStream(true);
+        Process p;
         try {
-            pb = new ProcessBuilder(commandPath, arguments);
-            pb.redirectErrorStream(true);
-            Process p = pb.start();
-            BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
+            p = pb.start();
+        } catch (IOException ex) {
+            System.out.println(String.format("Exception %s.", ex.getMessage()));
+            Logger.getLogger(CommandService.class.getName()).log(Level.SEVERE, null, ex);
+            return "An exception occured during execution of the command.";
+        }
+
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
             while (true) {
                 line = br.readLine();
                 if (line == null) {
@@ -131,7 +137,6 @@ public class CommandService {
             result = "An exception occured during execution of the command.";
         }
 
-//        System.out.println(String.format(result));
         logger.log(Level.INFO, String.format("CommandService. End execute command %s.", command.getName()));
 
         return result;
