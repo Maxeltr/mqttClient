@@ -35,6 +35,8 @@ public class Command {
 
     private String id;
 
+    private String replyTo;
+
     private String name;
 
     private String arguments;
@@ -51,6 +53,10 @@ public class Command {
 
     public String getId() {
         return id;
+    }
+
+    public String getReplyTo() {
+        return replyTo;
     }
 
     public String getName() {
@@ -81,8 +87,16 @@ public class Command {
         return result;
     }
 
+    public void setReplyTo(String replyTo) {
+        this.replyTo = replyTo;
+    }
+
     public void setValue(String value) {
         this.value = value;
+    }
+
+    public void setTimestamp(String timestamp) {
+        this.timestamp = timestamp;
     }
 
     public void setStatus(String status) {

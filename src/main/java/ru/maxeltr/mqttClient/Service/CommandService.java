@@ -28,9 +28,13 @@ import com.google.gson.JsonIOException;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.time.Instant;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -50,68 +54,107 @@ public class CommandService {
 
     Config config;
 
-    String cmdTopic;
+    List<String> allowedCommands;
+
+    String commandRepliesTopic;
 
     public CommandService(MqttClientImpl mqttClient, Config config) {
         this.mqttClient = mqttClient;
         this.config = config;
+        this.allowedCommands = Arrays.asList(this.config.getProperty("allowedCommands", "").split("\\s*,\\s*"));
 
-        String location = this.config.getProperty("location", "");
-        String clientId = this.config.getProperty("clientId", "");
-        StringBuilder cmdTopic = new StringBuilder();
-        cmdTopic.append(location);
-        cmdTopic.append("/");
-        cmdTopic.append(clientId);
-        cmdTopic.append("/");
-        cmdTopic.append("cmd");
-        cmdTopic.append("/");
-        cmdTopic.append("resp");
-        this.cmdTopic = cmdTopic.toString();
+        this.commandRepliesTopic = config.getProperty("receivingCommandRepliesTopic", "");
+        if (this.commandRepliesTopic.trim().isEmpty()) {
+            throw new IllegalStateException("Invalid receivingCommandRepliesTopic property");
+        }
     }
 
     @Async
     public void execute(Command command) {
-        List<String> allowedCommands = Arrays.asList(this.config.getProperty("allowedCommands", "").split("\\s*,\\s*"));
-        if (!allowedCommands.contains(command.getName())) {
+        if (!this.allowedCommands.contains(command.getName())) {
             logger.log(Level.INFO, String.format("Command not allowed %s.", command.getName()));
-            command.setStatus("response");
+            System.out.println(String.format("Command not allowed %s.", command.getName()));
             command.setResult("fail");
             command.setPayload("Command is not allowed");
             this.sendResponse(command);
             return;
         }
+
+        if (command.getReplyTo() == null || command.getReplyTo().trim().isEmpty()) {
+            logger.log(Level.INFO, String.format("Command %s has empty replyTo", command.getName()));
+            System.out.println(String.format("Command %s has empty replyTo", command.getName()));
+            command.setResult("fail");
+            command.setPayload(String.format("Command %s has empty replyTo", command.getName()));
+            this.sendResponse(command);
+            return;
+        }
+
+        String result = this.launch(command, "");
+        if (result.isEmpty()) {
+            logger.log(Level.INFO, String.format("Error with executing command %s. Empty result was returned.", command.getName()));
+            command.setResult("fail");
+            command.setPayload("Error with executing command");
+            this.sendResponse(command);
+            return;
+        }
+
         command.setResult("ok");
-        command.setValue("");
-        command.setPayload(this.launch(command, ""));
+        command.setPayload(result);
         this.sendResponse(command);
 
     }
 
-    @Async
     public void sendResponse(Command command) {
         command.setStatus("response");
 
         Gson gson = new Gson();
         try {
             String jsonCommand = gson.toJson(command);
-            this.mqttClient.publish(this.cmdTopic, Unpooled.wrappedBuffer(jsonCommand.getBytes()), MqttQoS.AT_MOST_ONCE, false);
+            this.mqttClient.publish(command.getReplyTo(), Unpooled.wrappedBuffer(jsonCommand.getBytes()), MqttQoS.AT_MOST_ONCE, false);
         } catch (JsonIOException ex) {
             logger.log(Level.SEVERE, null, ex);
         }
     }
 
-    public String launch(Command command, String arguments) {
+    @Async
+    public void sendCommand(Command command, String topic) {
+        command.setStatus("request");
+        command.setReplyTo(this.commandRepliesTopic);
+        long timestamp = Instant.now().toEpochMilli();
+        command.setTimestamp(String.valueOf(timestamp));
+
+        Gson gson = new Gson();
+        try {
+            String jsonCommand = gson.toJson(command);
+            this.mqttClient.publish(topic, Unpooled.wrappedBuffer(jsonCommand.getBytes()), MqttQoS.AT_MOST_ONCE, false);
+        } catch (JsonIOException ex) {
+            logger.log(Level.SEVERE, null, ex);
+        }
+    }
+
+    @Async
+    public void handleReply(Command command) {
+
+        File file = new File("c:\\java\\mqttClient\\test.jpg");
+        try ( FileOutputStream fileOutputStream = new FileOutputStream(file)) {
+            fileOutputStream.write(Base64.getDecoder().decode(command.getPayload()));
+        } catch (IOException ex) {
+            Logger.getLogger(MessageHandler.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    private String launch(Command command, String arguments) {
         logger.log(Level.INFO, String.format("CommandService. Start execute command %s.", command.getName()));
 
+        String result = "";
         String commandPath = config.getProperty(command.getName() + "CommandPath", "");
         if (commandPath.trim().isEmpty()) {
             logger.log(Level.WARNING, String.format("%s command path is empty", command.getName()));
             System.out.println(String.format("%s command path is empty", command.getName()));
-            return command.getName() + " command path is empty";
+            return result;
         }
 
         String line;
-        String result = "";
         ProcessBuilder pb = new ProcessBuilder(commandPath, arguments);
         pb.redirectErrorStream(true);
         Process p;
@@ -120,10 +163,10 @@ public class CommandService {
         } catch (IOException ex) {
             System.out.println(String.format("Exception %s.", ex.getMessage()));
             Logger.getLogger(CommandService.class.getName()).log(Level.SEVERE, null, ex);
-            return "An exception occured during execution of the command.";
+            return result;
         }
 
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+        try ( BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
             while (true) {
                 line = br.readLine();
                 if (line == null) {
@@ -134,7 +177,7 @@ public class CommandService {
         } catch (IOException ex) {
             System.out.println(String.format("Exception %s.", ex.getMessage()));
             logger.log(Level.SEVERE, null, ex);
-            result = "An exception occured during execution of the command.";
+            return "";
         }
 
         logger.log(Level.INFO, String.format("CommandService. End execute command %s.", command.getName()));

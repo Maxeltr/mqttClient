@@ -75,11 +75,11 @@ public class MqttChannelInitializer extends ChannelInitializer<SocketChannel> {
 
     }
 
-    public MqttConnectHandler getConnectHandler() {
-        return this.mqttConnectHandler;
-    }
-
-    public MqttSubscriptionHandler getSubscriptionHandler() {
-        return this.mqttSubscriptionHandler;
-    }
+//    public MqttConnectHandler getConnectHandler() {
+//        return this.mqttConnectHandler;
+//    }
+//
+//    public MqttSubscriptionHandler getSubscriptionHandler() {
+//        return this.mqttSubscriptionHandler;
+//    }
 }

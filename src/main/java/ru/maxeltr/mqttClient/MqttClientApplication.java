@@ -43,15 +43,24 @@ public class MqttClientApplication {
             throw new IllegalStateException("Invalid clientId property");
         }
 
-        StringBuilder cmdTopic = new StringBuilder();
-        cmdTopic.append(location);
-        cmdTopic.append("/");
-        cmdTopic.append(clientId);
-        cmdTopic.append("/");
-        cmdTopic.append("cmd");
-        cmdTopic.append("/");
-        cmdTopic.append("req");
+        String commandTopic = config.getProperty("receivingCommandsTopic", "");
+        if (commandTopic.trim().isEmpty()) {
+            throw new IllegalStateException("Invalid receivingCommandsTopic property");
+        }
 
+        String commandRepliesTopic = config.getProperty("receivingCommandRepliesTopic", "");
+        if (commandRepliesTopic.trim().isEmpty()) {
+            throw new IllegalStateException("Invalid receivingCommandRepliesTopic property");
+        }
+
+//        StringBuilder cmdTopic = new StringBuilder();
+//        cmdTopic.append(location);
+//        cmdTopic.append("/");
+//        cmdTopic.append(clientId);
+//        cmdTopic.append("/");
+//        cmdTopic.append("cmd");
+//        cmdTopic.append("/");
+//        cmdTopic.append("req");
 //        Map<String, MqttQoS> m = new HashMap();
 //        m.put("#", MqttQoS.AT_MOST_ONCE.value());
 //        m.put("test", MqttQoS.AT_LEAST_ONCE);
@@ -60,12 +69,13 @@ public class MqttClientApplication {
 //        m.put("test/qw", MqttQoS.AT_MOST_ONCE.value());
 //        m.put("$SYS/broker/clients/connected", MqttQoS.AT_MOST_ONCE.value());
 //        Promise<MqttSubAckMessage> subResult = mqttClientImpl.subscribe(m);
-
         Map<String, MqttQoS> subTopics = new HashMap();
 
         List<String> subQos0Topics = Arrays.asList(config.getProperty("subQos0Topics", "").split("\\s*,\\s*"));
         for (String topic : subQos0Topics) {
-            subTopics.put(topic, MqttQoS.AT_MOST_ONCE);
+            if (!topic.trim().isEmpty()) {
+                subTopics.put(topic, MqttQoS.AT_MOST_ONCE);
+            }
         }
 
         List<String> subQos1Topics = Arrays.asList(config.getProperty("subQos1Topics", "").split("\\s*,\\s*"));
@@ -82,15 +92,18 @@ public class MqttClientApplication {
             }
         }
 
-        subTopics.put(cmdTopic.toString(), MqttQoS.AT_MOST_ONCE);
+        subTopics.put(commandTopic, MqttQoS.AT_MOST_ONCE);
+        subTopics.put(commandRepliesTopic, MqttQoS.AT_MOST_ONCE);
+
         Promise<MqttSubAckMessage> subResult = mqttClientImpl.subscribe(subTopics);
 
 //
 //        MqttSubAckMessage res = subResult.get();
 //        System.out.println(String.format("main " + "MqttSubscriptionResult %s.%n", res.variableHeader().messageId()));
         Thread.sleep(2000);
-        String com = "{" + "\"id\"" + ":4," + "\"name\"" + ":" + "\"takeScreenshot\"" + "}";
-        mqttClientImpl.publish("hm/dsktpClient/cmd/req", Unpooled.wrappedBuffer(com.getBytes()), MqttQoS.AT_MOST_ONCE, false);
+//        String com = "{" + "\"id\"" + ":4," + "\"name\"" + ":" + "\"takeScreenshot\"" + "}";
+        String com = "{" + "\"id\"" + ":4," + "\"name\"" + ":" + "\"takeScreenshot\"," + "\"replyTo\"" + ":" + "\"hm/dsktpClient/cmd/replies\"" + "}";
+        mqttClientImpl.publish("hm/dsktpClient/cmd", Unpooled.wrappedBuffer(com.getBytes()), MqttQoS.AT_MOST_ONCE, false);
         Thread.sleep(2000);
 //        for( IntObjectMap.PrimitiveEntry<MqttSubscribeMessage> v: mqttClientImpl.waitingSubscriptions.entries()) {
 //            System.out.println(String.format("method main. waitingSubscriptions. key %s value %s", v.key(), v.value()));

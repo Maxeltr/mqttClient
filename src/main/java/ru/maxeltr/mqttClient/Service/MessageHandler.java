@@ -56,58 +56,51 @@ public class MessageHandler {
 
     CommandService commandService;
 
+    String commandTopic;
+
+    String commandRepliesTopic;
+
     public MessageHandler(CommandService commandService, Config config) {
         this.config = config;
         this.commandService = commandService;
+
+        this.commandTopic = config.getProperty("receivingCommandsTopic", "");
+        if (this.commandTopic.trim().isEmpty()) {
+            throw new IllegalStateException("Invalid receivingCommandsTopic property");
+        }
+
+        this.commandRepliesTopic = config.getProperty("receivingCommandRepliesTopic", "");
+        if (this.commandRepliesTopic.trim().isEmpty()) {
+            throw new IllegalStateException("Invalid receivingCommandRepliesTopic property");
+        }
     }
 
     @Async
     public void handleMessage(MqttPublishMessage message) throws InterruptedException {
         logger.log(Level.INFO, String.format("MessageHandler. Start handle publish message id: %s.", message.variableHeader().packetId()));
-        String location = config.getProperty("location", "");
-        String clientId = config.getProperty("clientId", "");
+
         MqttPublishVariableHeader variableHeader = (MqttPublishVariableHeader) message.variableHeader();
         String topic = variableHeader.topicName();
+        String payload = message.payload().toString(Charset.forName("UTF-8"));
         ArrayList<String> topicLevels = new ArrayList<>(Arrays.asList(topic.split("/")));
 
-        if (topicLevels.get(0).equalsIgnoreCase(location)) {
-//            logger.log(Level.WARNING, String.format("Topic level location \"%s\" is not match configuration \"%s\".", topicLevels.get(0), location));
-//            return;
-            if (topicLevels.get(1).equalsIgnoreCase(clientId)) {
-//                logger.log(Level.WARNING, String.format("Topic level clientId \"%s\" is not match configuration \"%s\".", topicLevels.get(1), clientId));
-//                return;
+        Command command;
+        GsonBuilder gb = new GsonBuilder();
+        Gson gson = gb.create();
+        try {
+            command = gson.fromJson(payload, Command.class);
+        } catch (JsonSyntaxException ex) {
+            logger.log(Level.SEVERE, "Malformed Json.", ex);
+            System.out.println(String.format("Malformed Json."));
+            return;
+        }
 
-                if (topicLevels.get(2).equalsIgnoreCase("cmd")) {
-                    if (topicLevels.get(3).equalsIgnoreCase("req")) {
-                        String payload = message.payload().toString(Charset.forName("UTF-8"));
-                        GsonBuilder gb = new GsonBuilder();
-                        Gson gson = gb.create();
-                        try {
-                            Command command = gson.fromJson(payload, Command.class);
-                            this.commandService.execute(command);
-                        } catch (JsonSyntaxException ex) {
-                            logger.log(Level.SEVERE, null, ex);
-                        }
-                    } else {
-
-                        File file = new File("c:\\java\\mqttClient\\test.jpg");
-                        try ( FileOutputStream fileOutputStream = new FileOutputStream(file)) {
-                            String payload = message.payload().toString(Charset.forName("UTF-8"));
-                            GsonBuilder gb = new GsonBuilder();
-                            Gson gson = gb.create();
-                            try {
-                                Command command = gson.fromJson(payload, Command.class);
-                                fileOutputStream.write(Base64.getDecoder().decode(command.getPayload()));
-                            } catch (JsonSyntaxException ex) {
-                                logger.log(Level.SEVERE, null, ex);
-                            }
-                        } catch (IOException ex) {
-                            Logger.getLogger(MessageHandler.class.getName()).log(Level.SEVERE, null, ex);
-                        }
-                    }
-
-                }
-            }
+        if (topic.equalsIgnoreCase(this.commandTopic)) {
+            this.commandService.execute(command);
+        } else if (topic.equalsIgnoreCase(this.commandRepliesTopic)) {
+            this.commandService.handleReply(command);
+        } else {
+            System.out.println(payload);
         }
 
     }
