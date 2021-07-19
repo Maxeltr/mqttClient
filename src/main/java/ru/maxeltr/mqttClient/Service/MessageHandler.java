@@ -82,23 +82,31 @@ public class MessageHandler {
         MqttPublishVariableHeader variableHeader = (MqttPublishVariableHeader) message.variableHeader();
         String topic = variableHeader.topicName();
         String payload = message.payload().toString(Charset.forName("UTF-8"));
-        ArrayList<String> topicLevels = new ArrayList<>(Arrays.asList(topic.split("/")));
 
         Command command;
         GsonBuilder gb = new GsonBuilder();
         Gson gson = gb.create();
-        try {
-            command = gson.fromJson(payload, Command.class);
-        } catch (JsonSyntaxException ex) {
-            logger.log(Level.SEVERE, "Malformed Json.", ex);
-            System.out.println(String.format("Malformed Json."));
-            return;
-        }
 
         if (topic.equalsIgnoreCase(this.commandTopic)) {
-            this.commandService.execute(command);
+            try {														//add
+                command = gson.fromJson(payload, Command.class);
+                this.commandService.execute(command);
+            } catch (JsonSyntaxException ex) {
+                logger.log(Level.SEVERE, "Malformed Json.", ex);
+                System.out.println(String.format("Malformed Json."));
+                return;
+            }
+
         } else if (topic.equalsIgnoreCase(this.commandRepliesTopic)) {
-            this.commandService.handleReply(command);
+            try {														//add
+                Reply reply = gson.fromJson(payload, Reply.class);
+                this.commandService.handleReply(reply);
+            } catch (JsonSyntaxException ex) {
+                logger.log(Level.SEVERE, "Malformed Json.", ex);
+                System.out.println(String.format("Malformed Json."));
+                return;
+            }
+
         } else {
             System.out.println(payload);
         }

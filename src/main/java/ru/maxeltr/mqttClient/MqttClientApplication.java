@@ -17,6 +17,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 import ru.maxeltr.mqttClient.Config.Config;
+import ru.maxeltr.mqttClient.Service.RmiServiceImpl;
 
 @SpringBootApplication
 public class MqttClientApplication {
@@ -28,6 +29,7 @@ public class MqttClientApplication {
         ConfigurableApplicationContext applicationContext = SpringApplication.run(MqttClientApplication.class, args);
         MqttClientImpl mqttClientImpl = (MqttClientImpl) applicationContext.getBean("mqttClientImpl");
         Config config = (Config) applicationContext.getBean("config");
+        RmiServiceImpl rmiServiceImpl = (RmiServiceImpl) applicationContext.getBean("rmiService");
 //        Promise<MqttConnAckMessage> connectResult = mqttClientImpl.connect("test.mosquitto.org", 1883);
         Promise<MqttConnAckMessage> connectResult = mqttClientImpl.connect("176.113.82.112", 1883);
 

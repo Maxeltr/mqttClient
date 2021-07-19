@@ -29,45 +29,45 @@ import java.util.logging.Logger;
  *
  * @author Maxim Eltratov <<Maxim.Eltratov@ya.ru>>
  */
-public class Command {
+public class Reply {
 
-    private static final Logger logger = Logger.getLogger(Command.class.getName());
+    private static final Logger logger = Logger.getLogger(Reply.class.getName());
 
-    private String id;
-
-    private String replyTo;
+    private String commandId;
 
     private String name;
 
-    private String arguments;
-
     private String timestamp;
 
-    public String getId() {
-        return id;
+    private String payload;
+
+    private String result;
+
+    public Reply(String commandId, String name, String timestamp, String payload, String result) {
+        this.commandId = commandId;
+        this.name = name;
+        this.timestamp = timestamp;
+        this.payload = payload;
+        this.result = result;
     }
 
-    public String getReplyTo() {
-        return replyTo;
+    public String getCommandId() {
+        return commandId;
     }
 
     public String getName() {
         return name;
     }
 
-    public String getArguments() {
-        return arguments;
-    }
-
     public String getTimestamp() {
         return timestamp;
     }
 
-    public void setReplyTo(String replyTo) {
-        this.replyTo = replyTo;
+    public String getPayload() {
+        return payload;
     }
 
-    public void setTimestamp(String timestamp) {
-        this.timestamp = timestamp;
+    public String getResult() {
+        return result;
     }
 }

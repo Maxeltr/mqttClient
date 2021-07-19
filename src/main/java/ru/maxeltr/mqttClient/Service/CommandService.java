@@ -35,7 +35,11 @@ import java.io.InputStreamReader;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.springframework.scheduling.annotation.Async;
@@ -50,13 +54,15 @@ public class CommandService {
 
     private static final Logger logger = Logger.getLogger(CommandService.class.getName());
 
-    MqttClientImpl mqttClient;
+    private MqttClientImpl mqttClient;
 
-    Config config;
+    private Config config;
 
-    List<String> allowedCommands;
+    private List<String> allowedCommands;
 
-    String commandRepliesTopic;
+    private String commandRepliesTopic;
+
+    private final Map<String, Command> pendingReplyCommands = Collections.synchronizedMap(new LinkedHashMap());
 
     public CommandService(MqttClientImpl mqttClient, Config config) {
         this.mqttClient = mqttClient;
@@ -71,57 +77,44 @@ public class CommandService {
 
     @Async
     public void execute(Command command) {
-        if (!this.allowedCommands.contains(command.getName())) {
-            logger.log(Level.INFO, String.format("Command not allowed %s.", command.getName()));
-            System.out.println(String.format("Command not allowed %s.", command.getName()));
-            command.setResult("fail");
-            command.setPayload("Command is not allowed");
-            this.sendResponse(command);
+        String timestamp = String.valueOf(Instant.now().toEpochMilli());
+        String replyTopic = command.getReplyTo();
+
+        HashMap<String, String> isValid = this.validate(command);
+        if (!Boolean.parseBoolean(isValid.get("isValid"))) {
+            this.sendResponse(replyTopic, new Reply(command.getId(), command.getName(), timestamp, isValid.get("message"), "fail"));
             return;
         }
 
-        if (command.getReplyTo() == null || command.getReplyTo().trim().isEmpty()) {
-            logger.log(Level.INFO, String.format("Command %s has empty replyTo", command.getName()));
-            System.out.println(String.format("Command %s has empty replyTo", command.getName()));
-            command.setResult("fail");
-            command.setPayload(String.format("Command %s has empty replyTo", command.getName()));
-            this.sendResponse(command);
-            return;
-        }
-
-        String result = this.launch(command, "");
+        String result = this.launch(command, command.getArguments() != null ? command.getArguments() : "");	//add
         if (result.isEmpty()) {
-            logger.log(Level.INFO, String.format("Error with executing command %s. Empty result was returned.", command.getName()));
-            command.setResult("fail");
-            command.setPayload("Error with executing command");
-            this.sendResponse(command);
+            logger.log(Level.INFO, String.format("Error with executing command %s. Empty result was returned. Arguments %s", command.getName(), command.getArguments()));
+            System.out.println(String.format("Error with executing command %s. Empty result was returned. Arguments %s", command.getName(), command.getArguments()));	//add
+            this.sendResponse(replyTopic, new Reply(command.getId(), command.getName(), timestamp, "Error with executing command", "fail"));
             return;
         }
 
-        command.setResult("ok");
-        command.setPayload(result);
-        this.sendResponse(command);
-
+        this.sendResponse(replyTopic, new Reply(command.getId(), command.getName(), timestamp, result, "ok"));
     }
 
-    public void sendResponse(Command command) {
-        command.setStatus("response");
-
+    public void sendResponse(String topic, Reply reply) {
         Gson gson = new Gson();
         try {
-            String jsonCommand = gson.toJson(command);
-            this.mqttClient.publish(command.getReplyTo(), Unpooled.wrappedBuffer(jsonCommand.getBytes()), MqttQoS.AT_MOST_ONCE, false);
+            String jsonCommand = gson.toJson(reply);
+            this.mqttClient.publish(topic, Unpooled.wrappedBuffer(jsonCommand.getBytes()), MqttQoS.AT_MOST_ONCE, false);
         } catch (JsonIOException ex) {
-            logger.log(Level.SEVERE, null, ex);
+            logger.log(Level.SEVERE, "JsonIOException was thrown. Reply was not sent.", ex);
+            System.out.println(String.format("JsonIOException was thrown. Reply was not sent."));
         }
     }
 
     @Async
     public void sendCommand(Command command, String topic) {
-        command.setStatus("request");
         command.setReplyTo(this.commandRepliesTopic);
         long timestamp = Instant.now().toEpochMilli();
         command.setTimestamp(String.valueOf(timestamp));
+
+//        this.pendingReplyCommands.put(command.getId(), Consumer<String> callback);
 
         Gson gson = new Gson();
         try {
@@ -133,11 +126,11 @@ public class CommandService {
     }
 
     @Async
-    public void handleReply(Command command) {
+    public void handleReply(Reply reply) {
 
         File file = new File("c:\\java\\mqttClient\\test.jpg");
         try ( FileOutputStream fileOutputStream = new FileOutputStream(file)) {
-            fileOutputStream.write(Base64.getDecoder().decode(command.getPayload()));
+            fileOutputStream.write(Base64.getDecoder().decode(reply.getPayload()));
         } catch (IOException ex) {
             Logger.getLogger(MessageHandler.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -184,5 +177,45 @@ public class CommandService {
 
         return result;
 
+    }
+
+    private HashMap<String, String> validate(Command command) {
+        HashMap<String, String> result = new HashMap<>();
+
+        if (!this.allowedCommands.contains(command.getName())) {
+            logger.log(Level.INFO, String.format("Command not allowed %s.", command.getName()));
+            System.out.println(String.format("Command not allowed %s.", command.getName()));
+            result.put("isValid", "false");
+            result.put("message", String.format("Command not allowed %s.", command.getName()));
+            return result;
+        }
+
+        if (command.getId() == null || command.getId().trim().isEmpty()) {
+            logger.log(Level.INFO, String.format("Command %s has empty id", command.getName()));
+            System.out.println(String.format("Command %s has empty id", command.getName()));
+            result.put("isValid", "false");
+            result.put("message", String.format("Command %s has empty id", command.getName()));
+            return result;
+        }
+
+        if (command.getReplyTo() == null || command.getReplyTo().trim().isEmpty()) {
+            logger.log(Level.INFO, String.format("Command %s has empty replyTo", command.getName()));
+            System.out.println(String.format("Command %s has empty replyTo", command.getName()));
+            result.put("isValid", "false");
+            result.put("message", String.format("Command %s has empty replyTo", command.getName()));
+            return result;
+        }
+
+        if (command.getName() == null || command.getName().trim().isEmpty()) {
+            logger.log(Level.INFO, String.format("Command %s has empty name", command.getName()));
+            System.out.println(String.format("Command %s has empty name", command.getName()));
+            result.put("isValid", "false");
+            result.put("message", String.format("Command %s has empty name", command.getName()));
+            return result;
+        }
+
+        result.put("isValid", "true");
+        result.put("message", String.format("Command %s is valid", command.getName()));
+        return result;
     }
 }

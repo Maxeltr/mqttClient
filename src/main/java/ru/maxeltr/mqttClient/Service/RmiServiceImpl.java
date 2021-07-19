@@ -23,51 +23,17 @@
  */
 package ru.maxeltr.mqttClient.Service;
 
-import java.util.logging.Logger;
+import java.rmi.RemoteException;
 
 /**
  *
  * @author Maxim Eltratov <<Maxim.Eltratov@ya.ru>>
  */
-public class Command {
+public class RmiServiceImpl implements RmiService {
 
-    private static final Logger logger = Logger.getLogger(Command.class.getName());
-
-    private String id;
-
-    private String replyTo;
-
-    private String name;
-
-    private String arguments;
-
-    private String timestamp;
-
-    public String getId() {
-        return id;
+    @Override
+    public String setCallback(String str) throws RemoteException {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
-    public String getReplyTo() {
-        return replyTo;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public String getArguments() {
-        return arguments;
-    }
-
-    public String getTimestamp() {
-        return timestamp;
-    }
-
-    public void setReplyTo(String replyTo) {
-        this.replyTo = replyTo;
-    }
-
-    public void setTimestamp(String timestamp) {
-        this.timestamp = timestamp;
-    }
 }

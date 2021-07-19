@@ -28,6 +28,12 @@ import io.netty.handler.codec.mqtt.MqttDecoder;
 import io.netty.handler.codec.mqtt.MqttEncoder;
 import io.netty.handler.timeout.IdleStateHandler;
 import java.io.IOException;
+import java.rmi.AlreadyBoundException;
+import java.rmi.Remote;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.LogManager;
@@ -37,6 +43,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.context.event.ApplicationEventMulticaster;
 import org.springframework.context.event.SimpleApplicationEventMulticaster;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
+import org.springframework.remoting.rmi.RmiServiceExporter;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -49,6 +56,7 @@ import ru.maxeltr.mqttClient.Mqtt.MqttSubscriptionHandler;
 import ru.maxeltr.mqttClient.Mqtt.PromiseBroker;
 import ru.maxeltr.mqttClient.Service.CommandService;
 import ru.maxeltr.mqttClient.Service.MessageHandler;
+import ru.maxeltr.mqttClient.Service.RmiServiceImpl;
 
 /**
  *
@@ -61,13 +69,24 @@ public class AppAnnotationConfig {
 
     public static final String CONFIG_PATHNAME = "Configuration.xml";
 
-    public AppAnnotationConfig() throws IOException {
+    public static final String UNIC_BINDING_NAME = "server.mqtt";
+
+    public AppAnnotationConfig() {
         try {
             LogManager.getLogManager().readConfiguration(AppAnnotationConfig.class.getResourceAsStream("/logging.properties")
             );
         } catch (IOException | SecurityException ex) {
             System.err.println("Could not setup logger configuration: " + ex.toString());
         }
+    }
+
+    @Bean
+    public RmiServiceImpl rmiService() throws RemoteException, AlreadyBoundException {
+        RmiServiceImpl service = new RmiServiceImpl();
+        final Registry registry = LocateRegistry.createRegistry(2099);
+        Remote stub = UnicastRemoteObject.exportObject(service, 0);
+        registry.bind(UNIC_BINDING_NAME, stub);
+        return service;
     }
 
     @Bean
@@ -94,8 +113,9 @@ public class AppAnnotationConfig {
     }
 
     @Bean
-    public MqttDecoder mqttDecoder() {
-        return new MqttDecoder(8092000);
+    public MqttDecoder mqttDecoder(Config config) {
+        int maxBytesInMessage = Integer.parseInt(config.getProperty("maxBytesInMessage", "8092"));
+        return new MqttDecoder(maxBytesInMessage);
     }
 
     @Bean
@@ -104,8 +124,9 @@ public class AppAnnotationConfig {
     }
 
     @Bean
-    public IdleStateHandler idleStateHandler() {
-        return new IdleStateHandler(0, 20, 0, TimeUnit.SECONDS);
+    public IdleStateHandler idleStateHandler(Config config) {
+        int keepAliveTimer = Integer.parseInt(config.getProperty("keepAliveTimer", "20"));	//add
+        return new IdleStateHandler(0, keepAliveTimer, 0, TimeUnit.SECONDS);
     }
 
     @Bean
