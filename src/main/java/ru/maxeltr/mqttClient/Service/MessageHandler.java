@@ -88,8 +88,10 @@ public class MessageHandler {
         Gson gson = gb.create();
 
         if (topic.equalsIgnoreCase(this.commandTopic)) {
-            try {														//add
+            try {
                 command = gson.fromJson(payload, Command.class);
+                logger.log(Level.INFO, String.format("Command %s was received. id=%s, timestamp=%s, replyTo=%s, arguments=%s.", command.getName(), command.getId(), command.getTimestamp(), command.getReplyTo(), command.getArguments()));
+                System.out.println(String.format("Command %s was received. id=%s, timestamp=%s, replyTo=%s, arguments=%s.", command.getName(), command.getId(), command.getTimestamp(), command.getReplyTo(), command.getArguments()));
                 this.commandService.execute(command);
             } catch (JsonSyntaxException ex) {
                 logger.log(Level.SEVERE, "Malformed Json.", ex);
@@ -98,8 +100,10 @@ public class MessageHandler {
             }
 
         } else if (topic.equalsIgnoreCase(this.commandRepliesTopic)) {
-            try {														//add
+            try {
                 Reply reply = gson.fromJson(payload, Reply.class);
+                logger.log(Level.INFO, String.format("Reply %s was received. id=%s, timestamp=%s, result=%s.", reply.getName(), reply.getCommandId(), reply.getTimestamp(), reply.getResult()));
+                System.out.println(String.format("Reply %s was received. id=%s, timestamp=%s, result=%s.", reply.getName(), reply.getCommandId(), reply.getTimestamp(), reply.getResult()));
                 this.commandService.handleReply(reply);
             } catch (JsonSyntaxException ex) {
                 logger.log(Level.SEVERE, "Malformed Json.", ex);

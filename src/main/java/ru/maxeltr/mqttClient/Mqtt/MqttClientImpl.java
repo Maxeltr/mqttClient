@@ -234,7 +234,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 
     public Promise<?> publish(String topic, ByteBuf payload, MqttQoS qos, boolean retain) {
         MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.PUBLISH, false, qos, retain, 0);
-        int id = getNewMessageId();
+        int id = qos == MqttQoS.AT_MOST_ONCE ? 0xFFFF : this.getNewMessageId();
         MqttPublishVariableHeader variableHeader = new MqttPublishVariableHeader(topic, id);
         MqttPublishMessage message = new MqttPublishMessage(fixedHeader, variableHeader, payload);
 
@@ -387,8 +387,8 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 
     private ChannelFuture writeAndFlush(Object message) {
         if (this.channel == null) {
-            logger.log(Level.WARNING, String.format("Channel is null"));
-            System.out.println(String.format("Channel is null"));
+            logger.log(Level.WARNING, String.format("Cannot write and flush message. Channel is null"));
+            System.out.println(String.format("Cannot write and flush message. Channel is null"));
             return null;
         }
         if (this.channel.isActive()) {

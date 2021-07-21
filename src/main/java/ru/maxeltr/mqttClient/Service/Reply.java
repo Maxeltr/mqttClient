@@ -23,6 +23,7 @@
  */
 package ru.maxeltr.mqttClient.Service;
 
+import io.netty.util.internal.StringUtil;
 import java.util.logging.Logger;
 
 /**
@@ -69,5 +70,14 @@ public class Reply {
 
     public String getResult() {
         return result;
+    }
+
+    @Override
+    public String toString() {
+        return new StringBuilder(StringUtil.simpleClassName(this))
+                .append('[')
+                .append(String.format("commandId=%s, name=%s, result=%s, timestamp=%s, payload=%s", this.commandId, this.name, this.result, this.timestamp, this.payload))
+                .append(']')
+                .toString();
     }
 }

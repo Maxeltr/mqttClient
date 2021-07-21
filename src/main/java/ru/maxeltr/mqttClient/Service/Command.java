@@ -23,6 +23,7 @@
  */
 package ru.maxeltr.mqttClient.Service;
 
+import io.netty.util.internal.StringUtil;
 import java.util.logging.Logger;
 
 /**
@@ -69,5 +70,14 @@ public class Command {
 
     public void setTimestamp(String timestamp) {
         this.timestamp = timestamp;
+    }
+
+    @Override
+    public String toString() {
+        return new StringBuilder(StringUtil.simpleClassName(this))
+                .append('[')
+                .append(String.format("id=%s, name=%s, replyTo=%s, timestamp=%s, arguments=%s", this.id, this.name, this.replyTo, this.timestamp, this.arguments))
+                .append(']')
+                .toString();
     }
 }

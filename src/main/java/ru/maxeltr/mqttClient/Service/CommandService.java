@@ -62,9 +62,11 @@ public class CommandService {
 
     private String commandRepliesTopic;
 
+    private RmiService rmiService;
+
     private final Map<String, Command> pendingReplyCommands = Collections.synchronizedMap(new LinkedHashMap());
 
-    public CommandService(MqttClientImpl mqttClient, Config config) {
+    public CommandService(MqttClientImpl mqttClient, Config config, RmiService rmiService) {
         this.mqttClient = mqttClient;
         this.config = config;
         this.allowedCommands = Arrays.asList(this.config.getProperty("allowedCommands", "").split("\\s*,\\s*"));
@@ -73,6 +75,9 @@ public class CommandService {
         if (this.commandRepliesTopic.trim().isEmpty()) {
             throw new IllegalStateException("Invalid receivingCommandRepliesTopic property");
         }
+
+        this.rmiService = rmiService;
+//	this.rmiService.setListener((Command command, String topic) -> CommandService.this.sendResponse(Command command, String topic));
     }
 
     @Async
@@ -82,14 +87,18 @@ public class CommandService {
 
         HashMap<String, String> isValid = this.validate(command);
         if (!Boolean.parseBoolean(isValid.get("isValid"))) {
-            this.sendResponse(replyTopic, new Reply(command.getId(), command.getName(), timestamp, isValid.get("message"), "fail"));
+            if (replyTopic != null && !replyTopic.trim().isEmpty()) {
+                this.sendResponse(replyTopic, new Reply(command.getId(), command.getName(), timestamp, isValid.get("message"), "fail"));
+            }
+            logger.log(Level.INFO, String.format("Command %s is not valid format. Arguments: %s", command.getName(), command.getArguments()));
+            System.out.println(String.format("Command %s is not valid format. Arguments: %s", command.getName(), command.getArguments()));
             return;
         }
 
-        String result = this.launch(command, command.getArguments() != null ? command.getArguments() : "");	//add
+        String result = this.launch(command, command.getArguments() != null ? command.getArguments() : "");
         if (result.isEmpty()) {
             logger.log(Level.INFO, String.format("Error with executing command %s. Empty result was returned. Arguments %s", command.getName(), command.getArguments()));
-            System.out.println(String.format("Error with executing command %s. Empty result was returned. Arguments %s", command.getName(), command.getArguments()));	//add
+            System.out.println(String.format("Error with executing command %s. Empty result was returned. Arguments %s", command.getName(), command.getArguments()));
             this.sendResponse(replyTopic, new Reply(command.getId(), command.getName(), timestamp, "Error with executing command", "fail"));
             return;
         }
@@ -106,6 +115,8 @@ public class CommandService {
             logger.log(Level.SEVERE, "JsonIOException was thrown. Reply was not sent.", ex);
             System.out.println(String.format("JsonIOException was thrown. Reply was not sent."));
         }
+        logger.log(Level.INFO, String.format("Reply %s was sent. id=%s, timestamp=%s, result=%s.", reply.getName(), reply.getCommandId(), reply.getTimestamp(), reply.getResult()));
+        System.out.println(String.format("Reply %s was sent. id=%s, timestamp=%s, result=%s.", reply.getName(), reply.getCommandId(), reply.getTimestamp(), reply.getResult()));
     }
 
     @Async
@@ -115,7 +126,6 @@ public class CommandService {
         command.setTimestamp(String.valueOf(timestamp));
 
 //        this.pendingReplyCommands.put(command.getId(), Consumer<String> callback);
-
         Gson gson = new Gson();
         try {
             String jsonCommand = gson.toJson(command);
@@ -129,7 +139,7 @@ public class CommandService {
     public void handleReply(Reply reply) {
 
         File file = new File("c:\\java\\mqttClient\\test.jpg");
-        try ( FileOutputStream fileOutputStream = new FileOutputStream(file)) {
+        try (FileOutputStream fileOutputStream = new FileOutputStream(file)) {
             fileOutputStream.write(Base64.getDecoder().decode(reply.getPayload()));
         } catch (IOException ex) {
             Logger.getLogger(MessageHandler.class.getName()).log(Level.SEVERE, null, ex);
@@ -137,14 +147,15 @@ public class CommandService {
     }
 
     private String launch(Command command, String arguments) {
-        logger.log(Level.INFO, String.format("CommandService. Start execute command %s.", command.getName()));
+        logger.log(Level.INFO, String.format("CommandService. Start execute command name=%s, id=%s.", command.getName(), command.getId()));
+        System.out.println(String.format("CommandService. Start execute command name=%s, id=%s.", command.getName(), command.getId()));
 
         String result = "";
         String commandPath = config.getProperty(command.getName() + "CommandPath", "");
         if (commandPath.trim().isEmpty()) {
-            logger.log(Level.WARNING, String.format("%s command path is empty", command.getName()));
-            System.out.println(String.format("%s command path is empty", command.getName()));
-            return result;
+            logger.log(Level.WARNING, String.format("%s command path is empty, id=%s", command.getName(), command.getId()));
+            System.out.println(String.format("%s command path is empty, id=%s", command.getName(), command.getId()));
+            return "";
         }
 
         String line;
@@ -154,26 +165,27 @@ public class CommandService {
         try {
             p = pb.start();
         } catch (IOException ex) {
-            System.out.println(String.format("Exception %s.", ex.getMessage()));
-            Logger.getLogger(CommandService.class.getName()).log(Level.SEVERE, null, ex);
-            return result;
+            System.out.println(String.format("ProcessBuilder cannot start. Command name=%s, id=%s.", command.getName(), command.getId()));
+            logger.log(Level.SEVERE, String.format("ProcessBuilder cannot start. Command name=%s, id=%s.", command.getName(), command.getId()), ex);
+            return "";
         }
 
-        try ( BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
             while (true) {
                 line = br.readLine();
                 if (line == null) {
                     break;
                 }
-                result += line;// + "\n";
+                result += line;
             }
         } catch (IOException ex) {
             System.out.println(String.format("Exception %s.", ex.getMessage()));
-            logger.log(Level.SEVERE, null, ex);
+            logger.log(Level.SEVERE, String.format("Command name=%s, id=%s.", command.getName(), command.getId()), ex);
             return "";
         }
 
-        logger.log(Level.INFO, String.format("CommandService. End execute command %s.", command.getName()));
+        logger.log(Level.INFO, String.format("CommandService. End execute command name=%s, id=%s.", command.getName(), command.getId()));
+        System.out.println(String.format("CommandService. End execute command name=%s, id=%s.", command.getName(), command.getId()));
 
         return result;
 

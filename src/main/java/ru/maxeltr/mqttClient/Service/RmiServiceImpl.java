@@ -24,6 +24,7 @@
 package ru.maxeltr.mqttClient.Service;
 
 import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
 
 /**
  *
@@ -31,9 +32,23 @@ import java.rmi.RemoteException;
  */
 public class RmiServiceImpl implements RmiService {
 
-    @Override
-    public String setCallback(String str) throws RemoteException {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+//    private Sender sender;
+
+    public RmiServiceImpl() throws RemoteException {
+	UnicastRemoteObject.exportObject(this, 0);
     }
 
+    @Override
+    public String setCallback(String str) throws RemoteException {
+        System.out.println("RmiServiceImpl " + str);
+        return "Hello 94e";
+    }
+
+//    public void setListener(Sender sender) {
+//        this.sender = sender;
+//    }
+//
+//    public void sendCommand(String command, String topic, callback) {
+//        this.sender(command, topic, callback);
+//    }
 }

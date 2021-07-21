@@ -30,6 +30,6 @@ import java.rmi.RemoteException;
  *
  * @author Maxim Eltratov <<Maxim.Eltratov@ya.ru>>
  */
-interface RmiService extends Remote {
+public interface RmiService extends Remote {
     public String setCallback(String str) throws RemoteException;
 }

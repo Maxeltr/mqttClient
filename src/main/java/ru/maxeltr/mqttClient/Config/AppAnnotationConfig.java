@@ -56,6 +56,7 @@ import ru.maxeltr.mqttClient.Mqtt.MqttSubscriptionHandler;
 import ru.maxeltr.mqttClient.Mqtt.PromiseBroker;
 import ru.maxeltr.mqttClient.Service.CommandService;
 import ru.maxeltr.mqttClient.Service.MessageHandler;
+import ru.maxeltr.mqttClient.Service.RmiService;
 import ru.maxeltr.mqttClient.Service.RmiServiceImpl;
 
 /**
@@ -81,11 +82,11 @@ public class AppAnnotationConfig {
     }
 
     @Bean
-    public RmiServiceImpl rmiService() throws RemoteException, AlreadyBoundException {
-        RmiServiceImpl service = new RmiServiceImpl();
+    public RmiService rmiService() throws RemoteException, AlreadyBoundException {
+        RmiService service = new RmiServiceImpl();
         final Registry registry = LocateRegistry.createRegistry(2099);
-        Remote stub = UnicastRemoteObject.exportObject(service, 0);
-        registry.bind(UNIC_BINDING_NAME, stub);
+//        Remote stub = UnicastRemoteObject.exportObject(service, 0);
+        registry.rebind(UNIC_BINDING_NAME, service);
         return service;
     }
 
@@ -125,7 +126,7 @@ public class AppAnnotationConfig {
 
     @Bean
     public IdleStateHandler idleStateHandler(Config config) {
-        int keepAliveTimer = Integer.parseInt(config.getProperty("keepAliveTimer", "20"));	//add
+        int keepAliveTimer = Integer.parseInt(config.getProperty("keepAliveTimer", "20"));
         return new IdleStateHandler(0, keepAliveTimer, 0, TimeUnit.SECONDS);
     }
 
@@ -168,8 +169,8 @@ public class AppAnnotationConfig {
     }
 
     @Bean
-    public CommandService commandService(MqttClientImpl mqttClient, Config config) {
-        return new CommandService(mqttClient, config);
+    public CommandService commandService(MqttClientImpl mqttClient, Config config, RmiService rmiService) {
+        return new CommandService(mqttClient, config, rmiService);
     }
 
     @Bean
