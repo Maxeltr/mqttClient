@@ -234,7 +234,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 
     public Promise<?> publish(String topic, ByteBuf payload, MqttQoS qos, boolean retain) {
         MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.PUBLISH, false, qos, retain, 0);
-        int id = qos == MqttQoS.AT_MOST_ONCE ? 0xFFFF : this.getNewMessageId();
+        int id = qos == MqttQoS.AT_MOST_ONCE ? -1 : this.getNewMessageId();
         MqttPublishVariableHeader variableHeader = new MqttPublishVariableHeader(topic, id);
         MqttPublishMessage message = new MqttPublishMessage(fixedHeader, variableHeader, payload);
 

@@ -36,9 +36,11 @@ public class Command {
 
     private String id;
 
-    private String replyTo;
-
     private String name;
+
+    private String target;
+
+    private String replyTo;
 
     private String arguments;
 
@@ -54,6 +56,10 @@ public class Command {
 
     public String getName() {
         return name;
+    }
+
+    public String getTarget() {
+        return target;
     }
 
     public String getArguments() {

@@ -93,9 +93,9 @@ public class MessageHandler {
                 logger.log(Level.INFO, String.format("Command %s was received. id=%s, timestamp=%s, replyTo=%s, arguments=%s.", command.getName(), command.getId(), command.getTimestamp(), command.getReplyTo(), command.getArguments()));
                 System.out.println(String.format("Command %s was received. id=%s, timestamp=%s, replyTo=%s, arguments=%s.", command.getName(), command.getId(), command.getTimestamp(), command.getReplyTo(), command.getArguments()));
                 this.commandService.execute(command);
-            } catch (JsonSyntaxException ex) {
-                logger.log(Level.SEVERE, "Malformed Json.", ex);
-                System.out.println(String.format("Malformed Json."));
+            } catch (JsonSyntaxException | NullPointerException ex) {
+                logger.log(Level.SEVERE, "Malformed Json or empty message payload.", ex);
+                System.out.println(String.format("Malformed Json or empty message payload."));
                 return;
             }
 
@@ -105,9 +105,9 @@ public class MessageHandler {
                 logger.log(Level.INFO, String.format("Reply %s was received. id=%s, timestamp=%s, result=%s.", reply.getName(), reply.getCommandId(), reply.getTimestamp(), reply.getResult()));
                 System.out.println(String.format("Reply %s was received. id=%s, timestamp=%s, result=%s.", reply.getName(), reply.getCommandId(), reply.getTimestamp(), reply.getResult()));
                 this.commandService.handleReply(reply);
-            } catch (JsonSyntaxException ex) {
-                logger.log(Level.SEVERE, "Malformed Json.", ex);
-                System.out.println(String.format("Malformed Json."));
+            } catch (JsonSyntaxException | NullPointerException ex) {
+                logger.log(Level.SEVERE, "Malformed Json or empty message payload.", ex);
+                System.out.println(String.format("Malformed Json or empty message payload."));
                 return;
             }
 

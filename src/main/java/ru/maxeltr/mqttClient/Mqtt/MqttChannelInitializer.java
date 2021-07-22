@@ -28,6 +28,8 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.mqtt.MqttDecoder;
 import io.netty.handler.codec.mqtt.MqttEncoder;
+import io.netty.handler.logging.LogLevel;
+import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.timeout.IdleStateHandler;
 
 /**
@@ -72,6 +74,7 @@ public class MqttChannelInitializer extends ChannelInitializer<SocketChannel> {
         ch.pipeline().addLast("mqttConnectHandler", this.mqttConnectHandler);
         ch.pipeline().addLast("mqttSubscriptionHandler", this.mqttSubscriptionHandler);
         ch.pipeline().addLast("mqttChannelHandler", this.mqttChannelHandler);
+//        ch.pipeline().addLast(new LoggingHandler(LogLevel.WARN));
 
     }
 

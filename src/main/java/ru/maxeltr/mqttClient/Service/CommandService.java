@@ -82,6 +82,13 @@ public class CommandService {
 
     @Async
     public void execute(Command command) {
+        if (!this.allowedCommands.contains(command.getName())) {
+            logger.log(Level.INFO, String.format("Command not allowed name=%s, id=%s.", command.getName(), command.getId()));
+            System.out.println(String.format("Command not allowed name=%s, id=%s.", command.getName(), command.getId()));
+
+            return;
+        }
+
         String timestamp = String.valueOf(Instant.now().toEpochMilli());
         String replyTopic = command.getReplyTo();
 
@@ -90,15 +97,15 @@ public class CommandService {
             if (replyTopic != null && !replyTopic.trim().isEmpty()) {
                 this.sendResponse(replyTopic, new Reply(command.getId(), command.getName(), timestamp, isValid.get("message"), "fail"));
             }
-            logger.log(Level.INFO, String.format("Command %s is not valid format. Arguments: %s", command.getName(), command.getArguments()));
-            System.out.println(String.format("Command %s is not valid format. Arguments: %s", command.getName(), command.getArguments()));
+            logger.log(Level.INFO, String.format("Command name=%s, id=%s is not valid format. Arguments: %s", command.getName(), command.getId(), command.getArguments()));
+            System.out.println(String.format("Command name=%s, id=%s is not valid format. Arguments: %s", command.getName(), command.getId(), command.getArguments()));
             return;
         }
 
         String result = this.launch(command, command.getArguments() != null ? command.getArguments() : "");
         if (result.isEmpty()) {
-            logger.log(Level.INFO, String.format("Error with executing command %s. Empty result was returned. Arguments %s", command.getName(), command.getArguments()));
-            System.out.println(String.format("Error with executing command %s. Empty result was returned. Arguments %s", command.getName(), command.getArguments()));
+            logger.log(Level.INFO, String.format("Error with executing command name=%s, id=%s. Empty result was returned. Arguments %s", command.getName(), command.getId(), command.getArguments()));
+            System.out.println(String.format("Error with executing command name=%s, id=%s. Empty result was returned. Arguments %s", command.getName(), command.getId(), command.getArguments()));
             this.sendResponse(replyTopic, new Reply(command.getId(), command.getName(), timestamp, "Error with executing command", "fail"));
             return;
         }
@@ -193,14 +200,6 @@ public class CommandService {
 
     private HashMap<String, String> validate(Command command) {
         HashMap<String, String> result = new HashMap<>();
-
-        if (!this.allowedCommands.contains(command.getName())) {
-            logger.log(Level.INFO, String.format("Command not allowed %s.", command.getName()));
-            System.out.println(String.format("Command not allowed %s.", command.getName()));
-            result.put("isValid", "false");
-            result.put("message", String.format("Command not allowed %s.", command.getName()));
-            return result;
-        }
 
         if (command.getId() == null || command.getId().trim().isEmpty()) {
             logger.log(Level.INFO, String.format("Command %s has empty id", command.getName()));
