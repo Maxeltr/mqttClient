@@ -70,10 +70,12 @@ public class MqttSubscriptionHandler extends ChannelInboundHandlerAdapter {
         MqttMessage message = (MqttMessage) msg;
         if (message.fixedHeader().messageType() == MqttMessageType.SUBACK) {
             this.handleSubAck(ctx.channel(), (MqttSubAckMessage) message);
+            ReferenceCountUtil.release(msg);
         } else if (message.fixedHeader().messageType() == MqttMessageType.UNSUBACK) {
             this.handleUnsuback((MqttUnsubAckMessage) message);
+            ReferenceCountUtil.release(msg);
         } else {
-            ctx.fireChannelRead(ReferenceCountUtil.retain(msg));
+            ctx.fireChannelRead(msg);   //ctx.fireChannelRead(ReferenceCountUtil.retain(msg));
         }
     }
 

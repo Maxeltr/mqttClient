@@ -33,6 +33,7 @@ import io.netty.handler.codec.mqtt.MqttMessageType;
 import io.netty.handler.codec.mqtt.MqttPubAckMessage;
 import io.netty.handler.codec.mqtt.MqttPublishMessage;
 import io.netty.handler.codec.mqtt.MqttQoS;
+import io.netty.util.ReferenceCountUtil;
 import io.netty.util.concurrent.Promise;
 import java.nio.charset.Charset;
 import java.util.Collections;
@@ -291,6 +292,7 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
                 //System.out.println(String.format("handlePublish: AT_MOST_ONCE. topicName - " + message.variableHeader().topicName() + " payload - " + message.payload().toString(Charset.forName("UTF-8"))));
                 //System.out.println(String.format("Call MessageHandler."));
                 //logger.log(Level.INFO, String.format("Call MessageHandler."));
+                ReferenceCountUtil.retain(message);
                 this.messageHandler.handleMessage(message);
                 //System.out.println(String.format("Return from MessageHandler."));
                 //logger.log(Level.INFO, String.format("Return from MessageHandler."));
@@ -299,6 +301,7 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
                 //System.out.println(String.format("handlePublish: AT_LEAST_ONCE. topicName - " + message.variableHeader().topicName() + " payload - " + message.payload().toString(Charset.forName("UTF-8"))));
 
                 //TODO handle publish Message
+                ReferenceCountUtil.retain(message);
                 this.messageHandler.handleMessage(message);
 
                 fixedHeader = new MqttFixedHeader(MqttMessageType.PUBACK, false, MqttQoS.AT_MOST_ONCE, false, 0);
@@ -327,6 +330,7 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
                 //System.out.println(String.format("handlePublish: EXACTLY_ONCE. topicName - " + message.variableHeader().topicName() + " payload - " + message.payload().toString(Charset.forName("UTF-8"))));
 
                 if (!this.pendingPubRel.containsKey(message.variableHeader().packetId())) {
+                    ReferenceCountUtil.retain(message);
                     this.pendingPubRel.put(message.variableHeader().packetId(), message);
                     System.out.println(String.format("Add (to pending PUBREL collection) publish message id: %s.", message.variableHeader().packetId()));
                     logger.log(Level.FINE, String.format("Add (to pending PUBREL collection) publish message id: %s.", message.variableHeader().packetId()));

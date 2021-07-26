@@ -73,7 +73,7 @@ public class MqttChannelInitializer extends ChannelInitializer<SocketChannel> {
         ch.pipeline().addLast("mqttPingHandler", this.mqttPingHandler);
         ch.pipeline().addLast("mqttConnectHandler", this.mqttConnectHandler);
         ch.pipeline().addLast("mqttSubscriptionHandler", this.mqttSubscriptionHandler);
-        ch.pipeline().addLast("mqttChannelHandler", this.mqttChannelHandler);
+        ch.pipeline().addLast("mqttPublishHandler", this.mqttChannelHandler);
 //        ch.pipeline().addLast(new LoggingHandler(LogLevel.WARN));
 
     }

@@ -76,12 +76,13 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
         MqttMessage message = (MqttMessage) msg;
         if (message.fixedHeader().messageType() == MqttMessageType.CONNACK) {
             handleConnack(ctx.channel(), (MqttConnAckMessage) message);
+            ReferenceCountUtil.release(msg);
         } else if (message.fixedHeader().messageType() == MqttMessageType.DISCONNECT) {
             System.out.println(String.format("Received DISCONNECT %s. Close channel.", msg));
             logger.log(Level.INFO, String.format("Received disconnect message %s. Close channel.", msg));
             ctx.close();
         } else {
-            ctx.fireChannelRead(ReferenceCountUtil.retain(msg));
+            ctx.fireChannelRead(msg);   //ctx.fireChannelRead(ReferenceCountUtil.retain(msg));
         }
     }
 

@@ -82,23 +82,24 @@ public class CommandService {
 
     @Async
     public void execute(Command command) {
-        if (!this.allowedCommands.contains(command.getName())) {
-            logger.log(Level.INFO, String.format("Command not allowed name=%s, id=%s.", command.getName(), command.getId()));
-            System.out.println(String.format("Command not allowed name=%s, id=%s.", command.getName(), command.getId()));
-
-            return;
-        }
-
         String timestamp = String.valueOf(Instant.now().toEpochMilli());
         String replyTopic = command.getReplyTo();
 
         HashMap<String, String> isValid = this.validate(command);
         if (!Boolean.parseBoolean(isValid.get("isValid"))) {
             if (replyTopic != null && !replyTopic.trim().isEmpty()) {
-                this.sendResponse(replyTopic, new Reply(command.getId(), command.getName(), timestamp, isValid.get("message"), "fail"));
+                this.sendResponse(replyTopic, new Reply(command.getId(), command.getName(), timestamp, "Command not allowed.", "fail"));
             }
             logger.log(Level.INFO, String.format("Command name=%s, id=%s is not valid format. Arguments: %s", command.getName(), command.getId(), command.getArguments()));
             System.out.println(String.format("Command name=%s, id=%s is not valid format. Arguments: %s", command.getName(), command.getId(), command.getArguments()));
+            return;
+        }
+
+        if (!this.allowedCommands.contains(command.getName())) {
+            this.sendResponse(replyTopic, new Reply(command.getId(), command.getName(), timestamp, isValid.get("message"), "fail"));
+            logger.log(Level.INFO, String.format("Command not allowed name=%s, id=%s.", command.getName(), command.getId()));
+            System.out.println(String.format("Command not allowed name=%s, id=%s.", command.getName(), command.getId()));
+
             return;
         }
 

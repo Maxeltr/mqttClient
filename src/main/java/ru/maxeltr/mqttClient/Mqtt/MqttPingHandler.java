@@ -75,9 +75,9 @@ public class MqttPingHandler extends ChannelInboundHandlerAdapter {
                 this.pingRespTimeout.cancel(true);
                 this.pingRespTimeout = null;
             }
-
+            ReferenceCountUtil.release(msg);
         } else {
-            ctx.fireChannelRead(ReferenceCountUtil.retain(msg));
+            ctx.fireChannelRead(msg);   //ctx.fireChannelRead(ReferenceCountUtil.retain(msg));
         }
     }
 

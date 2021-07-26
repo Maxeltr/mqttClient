@@ -29,6 +29,7 @@ import com.google.gson.JsonSyntaxException;
 import io.netty.handler.codec.mqtt.MqttMessage;
 import io.netty.handler.codec.mqtt.MqttPublishMessage;
 import io.netty.handler.codec.mqtt.MqttPublishVariableHeader;
+import io.netty.util.ReferenceCountUtil;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -97,6 +98,8 @@ public class MessageHandler {
                 logger.log(Level.SEVERE, "Malformed Json or empty message payload.", ex);
                 System.out.println(String.format("Malformed Json or empty message payload."));
                 return;
+            } finally {
+                ReferenceCountUtil.release(message);
             }
 
         } else if (topic.equalsIgnoreCase(this.commandRepliesTopic)) {
@@ -109,10 +112,13 @@ public class MessageHandler {
                 logger.log(Level.SEVERE, "Malformed Json or empty message payload.", ex);
                 System.out.println(String.format("Malformed Json or empty message payload."));
                 return;
+            } finally {
+                ReferenceCountUtil.release(message);
             }
 
         } else {
             System.out.println(payload);
+            ReferenceCountUtil.release(message);
         }
 
     }
