@@ -146,32 +146,32 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
         this.reconnectDelay = Integer.parseInt(this.config.getProperty("reconnectDelay", "2"));
     }
 
-    private class MyMqttChannelInitializer extends ChannelInitializer<SocketChannel> {
-
-        private Integer maxBytesInMessage;
-        private Integer keepAliveTimer;
-
-        MyMqttChannelInitializer() {
-            maxBytesInMessage = Integer.parseInt(config.getProperty("maxBytesInMessage", "8092"));
-            keepAliveTimer = Integer.parseInt(config.getProperty("keepAliveTimer", "20"));
-        }
-
-        @Override
-        protected void initChannel(SocketChannel ch) throws Exception {
-            ch.pipeline().addLast("mqttDecoder", new MqttDecoder(maxBytesInMessage));
-            ch.pipeline().addLast("mqttEncoder", MqttEncoder.INSTANCE);
-            ch.pipeline().addLast("idleStateHandler", new IdleStateHandler(0, keepAliveTimer, 0, TimeUnit.SECONDS));
-            MqttPingHandler mqttPingHandler = (MqttPingHandler) MqttClientImpl.this.appContext.getBean("mqttPingHandler");
-            ch.pipeline().addLast("mqttPingHandler", mqttPingHandler);
-            MqttConnectHandler mqttConnectHandler = (MqttConnectHandler) MqttClientImpl.this.appContext.getBean("mqttConnectHandler");
-            ch.pipeline().addLast("mqttConnectHandler", mqttConnectHandler);
-            ch.pipeline().addLast("mqttSubscriptionHandler", new MqttSubscriptionHandler(MqttClientImpl.this.promiseBroker, MqttClientImpl.this.config));
-            MqttPublishHandler mqttPublishHandler = (MqttPublishHandler) MqttClientImpl.this.appContext.getBean("mqttPublishHandler");
-//            MessageHandler messageHandler = (MessageHandler) MqttClientImpl.this.appContext.getBean("messageHandler");
-//            MqttPublishHandler mqttPublishHandler = new MqttPublishHandler(promiseBroker, messageHandler, config);
-            ch.pipeline().addLast("mqttPublishHandler", mqttPublishHandler);
-        }
-    }
+//    private class MyMqttChannelInitializer extends ChannelInitializer<SocketChannel> {
+//
+//        private Integer maxBytesInMessage;
+//        private Integer keepAliveTimer;
+//
+//        MyMqttChannelInitializer() {
+//            maxBytesInMessage = Integer.parseInt(config.getProperty("maxBytesInMessage", "8092"));
+//            keepAliveTimer = Integer.parseInt(config.getProperty("keepAliveTimer", "20"));
+//        }
+//
+//        @Override
+//        protected void initChannel(SocketChannel ch) throws Exception {
+//            ch.pipeline().addLast("mqttDecoder", new MqttDecoder(maxBytesInMessage));
+//            ch.pipeline().addLast("mqttEncoder", MqttEncoder.INSTANCE);
+//            ch.pipeline().addLast("idleStateHandler", new IdleStateHandler(0, keepAliveTimer, 0, TimeUnit.SECONDS));
+//            MqttPingHandler mqttPingHandler = (MqttPingHandler) MqttClientImpl.this.appContext.getBean("mqttPingHandler");
+//            ch.pipeline().addLast("mqttPingHandler", mqttPingHandler);
+//            MqttConnectHandler mqttConnectHandler = (MqttConnectHandler) MqttClientImpl.this.appContext.getBean("mqttConnectHandler");
+//            ch.pipeline().addLast("mqttConnectHandler", mqttConnectHandler);
+//            ch.pipeline().addLast("mqttSubscriptionHandler", new MqttSubscriptionHandler(MqttClientImpl.this.promiseBroker, MqttClientImpl.this.config));
+//            MqttPublishHandler mqttPublishHandler = (MqttPublishHandler) MqttClientImpl.this.appContext.getBean("mqttPublishHandler");
+////            MessageHandler messageHandler = (MessageHandler) MqttClientImpl.this.appContext.getBean("messageHandler");
+////            MqttPublishHandler mqttPublishHandler = new MqttPublishHandler(promiseBroker, messageHandler, config);
+//            ch.pipeline().addLast("mqttPublishHandler", mqttPublishHandler);
+//        }
+//    }
 
     @Override
     public void onApplicationEvent(ApplicationEvent event) {
@@ -239,7 +239,9 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
         bootstrap = new Bootstrap();
         bootstrap.group(this.workerGroup);
         bootstrap.channel(NioSocketChannel.class);
-        bootstrap.handler(new MyMqttChannelInitializer());
+//        bootstrap.handler(new MyMqttChannelInitializer());
+        MqttChannelInitializer mqttChannelInitializer = (MqttChannelInitializer) MqttClientImpl.this.appContext.getBean("mqttChannelInitializer");
+        bootstrap.handler(mqttChannelInitializer);
 
         Promise<MqttConnAckMessage> connectFuture = new DefaultPromise<>(this.workerGroup.next());
         this.promiseBroker.setConnectFuture(connectFuture);
@@ -270,6 +272,11 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
     }
 
     public void reconnect() {   // move to separate thread
+        String host = config.getProperty("host", "");
+        if (host.trim().isEmpty()) {
+            throw new IllegalStateException("Invalid host property");
+        }
+
         System.out.println(String.format("Reconnect!"));
         logger.log(Level.INFO, String.format("Reconnect!"));
         if (this.channel != null) {
@@ -277,13 +284,12 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
         }
         try {
             Thread.sleep(this.reconnectDelay);
-            Promise<MqttConnAckMessage> promise = this.connect("176.113.82.112", 1883);
+            Promise<MqttConnAckMessage> promise = this.connect(host, 1883);
             promise.addListener(f -> this.subscribeFromConfig());
         } catch (InterruptedException ex) {
             Logger.getLogger(MqttClientImpl.class.getName()).log(Level.SEVERE, null, ex);
         }
-
-        ;
+        
     }
 
 //    public Boolean isInetAvailable() {

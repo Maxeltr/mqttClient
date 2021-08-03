@@ -55,7 +55,7 @@ import ru.maxeltr.mqttClient.Service.MessageHandler;
  *
  * @author Maxim Eltratov <<Maxim.Eltratov@ya.ru>>
  */
-@Sharable
+//@Sharable
 public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage> {
 
     private static final Logger logger = Logger.getLogger(MqttPublishHandler.class.getName());
@@ -94,14 +94,6 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
     public void handlerAdded(ChannelHandlerContext ctx) {
         this.ctx = ctx;
     }
-//    @Override
-//    public void channelActive(ChannelHandlerContext ctx) throws Exception {
-//        super.channelActive(ctx);
-//        logger.log(Level.WARNING, String.format("this.ctx = ctx;  %s", ctx.channel()));
-//        System.out.println(String.format("this.ctx = ctx;  %s", ctx.channel()));
-//        this.ctx = ctx;
-//
-//    }
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, MqttMessage msg) throws Exception {
@@ -379,13 +371,16 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
 
     @Scheduled(fixedDelay = 20000, initialDelay = 20000)
     public void retransmit() {
-        System.out.println(String.format("Start retransmission in publish handler"));
-        logger.log(Level.FINE, String.format("Start retransmission in publish handler"));
-
-        logger.log(Level.WARNING, String.format("retransmit this.ctx = ctx;  %s", this.ctx));
-        System.out.println(String.format("retransmit this.ctx = ctx;  %s", this.ctx));
+        if (this.getChannelHandlerContext() == null) {
+            System.out.println(String.format("ChannelHandlerContext is null in retransmit method. Cannot retransmit."));
+            logger.log(Level.WARNING, String.format("ChannelHandlerContext is null in retransmit method. Cannot retransmit."));
+            return;
+        }
 
         Channel channel = this.getChannelHandlerContext().channel();
+
+        System.out.println(String.format("Start retransmission in publish handler"));
+        logger.log(Level.FINE, String.format("Start retransmission in publish handler"));
 
         //Check amount of publish messages, that pending PUBREL. No need to retransmit PUBREC messages.
         //TODO What to do when amount = x?
@@ -424,6 +419,9 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
                             index, this.pendingPubComp.size(),
                             pubrelVariableHeader.messageId()
                     ));
+                } else {
+                    System.out.println(String.format("Channel is inactive."));
+                    logger.log(Level.WARNING, String.format("Channel is inactive."));
                 }
                 index++;
             }

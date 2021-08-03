@@ -48,6 +48,7 @@ import org.springframework.remoting.rmi.RmiServiceExporter;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import ru.maxeltr.mqttClient.Mqtt.ExceptionHandler;
 import ru.maxeltr.mqttClient.Mqtt.MqttChannelInitializer;
 import ru.maxeltr.mqttClient.Mqtt.MqttClientImpl;
 import ru.maxeltr.mqttClient.Mqtt.MqttConnectHandler;
@@ -115,6 +116,7 @@ public class AppAnnotationConfig {
     }
 
     @Bean
+    @Scope("prototype")
     public MqttDecoder mqttDecoder(Config config) {
         int maxBytesInMessage = Integer.parseInt(config.getProperty("maxBytesInMessage", "8092"));
         return new MqttDecoder(maxBytesInMessage);
@@ -126,6 +128,7 @@ public class AppAnnotationConfig {
     }
 
     @Bean
+    @Scope("prototype")
     public IdleStateHandler idleStateHandler(Config config) {
         int keepAliveTimer = Integer.parseInt(config.getProperty("keepAliveTimer", "20"));
         return new IdleStateHandler(0, keepAliveTimer, 0, TimeUnit.SECONDS);
@@ -138,7 +141,7 @@ public class AppAnnotationConfig {
     }
 
     @Bean
-//    @Scope("prototype")
+    @Scope("prototype")
     public MqttPublishHandler mqttPublishHandler(PromiseBroker promiseBroker, @Lazy MessageHandler messageHandler, Config config) {
         return new MqttPublishHandler(promiseBroker, messageHandler, config);
     }
@@ -156,6 +159,13 @@ public class AppAnnotationConfig {
     }
 
     @Bean
+    @Scope("prototype")
+    public ExceptionHandler ExceptionHandler() {
+        return new ExceptionHandler();
+    }
+
+    @Bean
+    @Scope("prototype")
     public MqttChannelInitializer mqttChannelInitializer(
             MqttDecoder mqttDecoder,
             MqttEncoder mqttEncoder,

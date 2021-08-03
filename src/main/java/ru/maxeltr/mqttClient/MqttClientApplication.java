@@ -32,7 +32,7 @@ public class MqttClientApplication {
         Config config = (Config) applicationContext.getBean("config");
         RmiServiceImpl rmiServiceImpl = (RmiServiceImpl) applicationContext.getBean("rmiService");
 //        Promise<MqttConnAckMessage> connectResult = mqttClientImpl.connect("test.mosquitto.org", 1883);
-        Promise<MqttConnAckMessage> connectResult = mqttClientImpl.connect("176.113.82.112", 1883);
+        Promise<MqttConnAckMessage> connectResult = mqttClientImpl.connect(config.getProperty("host", ""), 1883);
 
         System.out.println("main " + connectResult.get().variableHeader().connectReturnCode());
 
@@ -125,6 +125,9 @@ public class MqttClientApplication {
 //            System.out.println("activeSubscriptions " + pair.getKey() + " = " + pair.getValue());
 //            it.remove(); // avoids a ConcurrentModificationException
 //        }
+
+        Thread.sleep(5000);
+        mqttClientImpl.reconnect();
 
 //        mqttClientImpl.shutdown();
         System.out.println(String.format("End.%n"));
