@@ -7,6 +7,7 @@ import io.netty.handler.codec.mqtt.MqttQoS;
 import io.netty.handler.codec.mqtt.MqttSubAckMessage;
 import io.netty.handler.codec.mqtt.MqttVersion;
 import io.netty.util.concurrent.Promise;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -45,20 +46,20 @@ public class MqttClientApplication {
             throw new IllegalStateException("Invalid clientId property");
         }
 
-        String commandTopic = config.getProperty("receivingCommandsTopic", "");
-        if (commandTopic.trim().isEmpty()) {
-            throw new IllegalStateException("Invalid receivingCommandsTopic property");
-        }
-
-        String commandRepliesTopic = config.getProperty("receivingCommandRepliesTopic", "");
-        if (commandRepliesTopic.trim().isEmpty()) {
-            throw new IllegalStateException("Invalid receivingCommandRepliesTopic property");
-        }
-
-        String commandQos = config.getProperty("commandQos", "");
-        if (commandQos.trim().isEmpty()) {
-            throw new IllegalStateException("Invalid commandQos property");
-        }
+//        String commandTopic = config.getProperty("receivingCommandsTopic", "");
+//        if (commandTopic.trim().isEmpty()) {
+//            throw new IllegalStateException("Invalid receivingCommandsTopic property");
+//        }
+//
+//        String commandRepliesTopic = config.getProperty("receivingCommandRepliesTopic", "");
+//        if (commandRepliesTopic.trim().isEmpty()) {
+//            throw new IllegalStateException("Invalid receivingCommandRepliesTopic property");
+//        }
+//
+//        String commandQos = config.getProperty("commandQos", "");
+//        if (commandQos.trim().isEmpty()) {
+//            throw new IllegalStateException("Invalid commandQos property");
+//        }
 
 
 //        StringBuilder cmdTopic = new StringBuilder();
@@ -77,33 +78,35 @@ public class MqttClientApplication {
 //        m.put("test/qw", MqttQoS.AT_MOST_ONCE.value());
 //        m.put("$SYS/broker/clients/connected", MqttQoS.AT_MOST_ONCE.value());
 //        Promise<MqttSubAckMessage> subResult = mqttClientImpl.subscribe(m);
-        Map<String, MqttQoS> subTopics = new HashMap();
+//        Map<String, MqttQoS> subTopics = new HashMap();             //TODO move to client method connectAndsubscribe?
+//
+//        List<String> subQos0Topics = Arrays.asList(config.getProperty("subQos0Topics", "").split("\\s*,\\s*"));
+//        for (String topic : subQos0Topics) {
+//            if (!topic.trim().isEmpty()) {
+//                subTopics.put(topic, MqttQoS.AT_MOST_ONCE);
+//            }
+//        }
+//
+//        List<String> subQos1Topics = Arrays.asList(config.getProperty("subQos1Topics", "").split("\\s*,\\s*"));
+//        for (String topic : subQos1Topics) {
+//            if (!topic.trim().isEmpty()) {
+//                subTopics.put(topic, MqttQoS.AT_LEAST_ONCE);
+//            }
+//        }
+//
+//        List<String> subQos2Topics = Arrays.asList(config.getProperty("subQos2Topics", "").split("\\s*,\\s*"));
+//        for (String topic : subQos2Topics) {
+//            if (!topic.trim().isEmpty()) {
+//                subTopics.put(topic, MqttQoS.EXACTLY_ONCE);
+//            }
+//        }
+//
+//        subTopics.put(commandTopic, MqttQoS.valueOf(commandQos));
+//        subTopics.put(commandRepliesTopic, MqttQoS.valueOf(commandQos));
+//
+//        Promise<MqttSubAckMessage> subResult = mqttClientImpl.subscribe(subTopics);
 
-        List<String> subQos0Topics = Arrays.asList(config.getProperty("subQos0Topics", "").split("\\s*,\\s*"));
-        for (String topic : subQos0Topics) {
-            if (!topic.trim().isEmpty()) {
-                subTopics.put(topic, MqttQoS.AT_MOST_ONCE);
-            }
-        }
-
-        List<String> subQos1Topics = Arrays.asList(config.getProperty("subQos1Topics", "").split("\\s*,\\s*"));
-        for (String topic : subQos1Topics) {
-            if (!topic.trim().isEmpty()) {
-                subTopics.put(topic, MqttQoS.AT_LEAST_ONCE);
-            }
-        }
-
-        List<String> subQos2Topics = Arrays.asList(config.getProperty("subQos2Topics", "").split("\\s*,\\s*"));
-        for (String topic : subQos2Topics) {
-            if (!topic.trim().isEmpty()) {
-                subTopics.put(topic, MqttQoS.EXACTLY_ONCE);
-            }
-        }
-
-        subTopics.put(commandTopic, MqttQoS.valueOf(commandQos));
-        subTopics.put(commandRepliesTopic, MqttQoS.valueOf(commandQos));
-
-        Promise<MqttSubAckMessage> subResult = mqttClientImpl.subscribe(subTopics);
+        Promise<MqttSubAckMessage> subResult = mqttClientImpl.subscribeFromConfig();
 
 //
 //        MqttSubAckMessage res = subResult.get();
@@ -111,7 +114,7 @@ public class MqttClientApplication {
         Thread.sleep(2000);
 //        String com = "{" + "\"id\"" + ":4," + "\"name\"" + ":" + "\"takeScreenshot\"" + "}";
         String com = "{" + "\"id\"" + ":4," + "\"name\"" + ":" + "\"takeScreenshot\"," + "\"replyTo\"" + ":" + "\"hm/dsktpClient/cmd/replies\"" + "}";
-        mqttClientImpl.publish("hm/dsktpClient/cmd", Unpooled.wrappedBuffer(com.getBytes()), MqttQoS.EXACTLY_ONCE, false);
+        mqttClientImpl.publish("hm/dsktpClient/cmd", Unpooled.wrappedBuffer(com.getBytes(Charset.forName("UTF-8"))), MqttQoS.EXACTLY_ONCE, false);
         Thread.sleep(2000);
 //        for( IntObjectMap.PrimitiveEntry<MqttSubscribeMessage> v: mqttClientImpl.waitingSubscriptions.entries()) {
 //            System.out.println(String.format("method main. waitingSubscriptions. key %s value %s", v.key(), v.value()));

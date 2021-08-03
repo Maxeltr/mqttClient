@@ -28,10 +28,14 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelInitializer;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.mqtt.MqttConnAckMessage;
+import io.netty.handler.codec.mqtt.MqttDecoder;
+import io.netty.handler.codec.mqtt.MqttEncoder;
 import io.netty.handler.codec.mqtt.MqttFixedHeader;
 import io.netty.handler.codec.mqtt.MqttMessage;
 import io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader;
@@ -49,28 +53,36 @@ import io.netty.handler.codec.mqtt.MqttTopicSubscription;
 import io.netty.handler.codec.mqtt.MqttUnsubAckMessage;
 import io.netty.handler.codec.mqtt.MqttUnsubscribeMessage;
 import io.netty.handler.codec.mqtt.MqttUnsubscribePayload;
+import io.netty.handler.timeout.IdleStateHandler;
+import io.netty.util.ReferenceCountUtil;
 import io.netty.util.concurrent.DefaultPromise;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.FutureListener;
 import io.netty.util.concurrent.GenericFutureListener;
 import io.netty.util.concurrent.Promise;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import ru.maxeltr.mqttClient.Config.Config;
+import ru.maxeltr.mqttClient.Service.MessageHandler;
 
 /**
  *
@@ -80,15 +92,22 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 
     private static final Logger logger = Logger.getLogger(MqttClientImpl.class.getName());
 
+    @Autowired
+    private ApplicationContext appContext;
+
     private Channel channel;
 
     private final MqttChannelInitializer mqttChannelInitializer;
 
     private EventLoopGroup workerGroup;
 
-    private final Bootstrap bootstrap;
+    private Bootstrap bootstrap;
 
     private final Config config;
+
+    private final Boolean reconnect;
+
+    private final Integer reconnectDelay;
 
     private final PromiseBroker promiseBroker;
 
@@ -116,17 +135,96 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
     public MqttClientImpl(MqttChannelInitializer mqttChannelInitializer, Config config, PromiseBroker promiseBroker) {
         this.mqttChannelInitializer = mqttChannelInitializer;
         this.config = config;
-        this.workerGroup = new NioEventLoopGroup();
-        this.bootstrap = new Bootstrap();
-        bootstrap.group(this.workerGroup);
-        bootstrap.channel(NioSocketChannel.class);
-        bootstrap.handler(this.mqttChannelInitializer);
+//        this.workerGroup = new NioEventLoopGroup();
+//        this.bootstrap = new Bootstrap();
+//        bootstrap.group(this.workerGroup);
+//        bootstrap.channel(NioSocketChannel.class);
+//        bootstrap.handler(this.mqttChannelInitializer);
         this.promiseBroker = promiseBroker;
+
+        this.reconnect = Boolean.parseBoolean(this.config.getProperty("reconnect", "true"));
+        this.reconnectDelay = Integer.parseInt(this.config.getProperty("reconnectDelay", "2"));
+    }
+
+    private class MyMqttChannelInitializer extends ChannelInitializer<SocketChannel> {
+
+        private Integer maxBytesInMessage;
+        private Integer keepAliveTimer;
+
+        MyMqttChannelInitializer() {
+            maxBytesInMessage = Integer.parseInt(config.getProperty("maxBytesInMessage", "8092"));
+            keepAliveTimer = Integer.parseInt(config.getProperty("keepAliveTimer", "20"));
+        }
+
+        @Override
+        protected void initChannel(SocketChannel ch) throws Exception {
+            ch.pipeline().addLast("mqttDecoder", new MqttDecoder(maxBytesInMessage));
+            ch.pipeline().addLast("mqttEncoder", MqttEncoder.INSTANCE);
+            ch.pipeline().addLast("idleStateHandler", new IdleStateHandler(0, keepAliveTimer, 0, TimeUnit.SECONDS));
+            MqttPingHandler mqttPingHandler = (MqttPingHandler) MqttClientImpl.this.appContext.getBean("mqttPingHandler");
+            ch.pipeline().addLast("mqttPingHandler", mqttPingHandler);
+            MqttConnectHandler mqttConnectHandler = (MqttConnectHandler) MqttClientImpl.this.appContext.getBean("mqttConnectHandler");
+            ch.pipeline().addLast("mqttConnectHandler", mqttConnectHandler);
+            ch.pipeline().addLast("mqttSubscriptionHandler", new MqttSubscriptionHandler(MqttClientImpl.this.promiseBroker, MqttClientImpl.this.config));
+            MqttPublishHandler mqttPublishHandler = (MqttPublishHandler) MqttClientImpl.this.appContext.getBean("mqttPublishHandler");
+//            MessageHandler messageHandler = (MessageHandler) MqttClientImpl.this.appContext.getBean("messageHandler");
+//            MqttPublishHandler mqttPublishHandler = new MqttPublishHandler(promiseBroker, messageHandler, config);
+            ch.pipeline().addLast("mqttPublishHandler", mqttPublishHandler);
+        }
     }
 
     @Override
     public void onApplicationEvent(ApplicationEvent event) {
+        if (event instanceof PingTimeoutEvent) {
+            if (this.reconnect) {
+                this.reconnect();
+            }
+        }
+    }
 
+    public Promise<MqttSubAckMessage> subscribeFromConfig() {
+        String commandTopic = config.getProperty("receivingCommandsTopic", "");
+        if (commandTopic.trim().isEmpty()) {
+            throw new IllegalStateException("Invalid receivingCommandsTopic property");
+        }
+
+        String commandRepliesTopic = config.getProperty("receivingCommandRepliesTopic", "");
+        if (commandRepliesTopic.trim().isEmpty()) {
+            throw new IllegalStateException("Invalid receivingCommandRepliesTopic property");
+        }
+
+        String commandQos = config.getProperty("commandQos", "");
+        if (commandQos.trim().isEmpty()) {
+            throw new IllegalStateException("Invalid commandQos property");
+        }
+
+        Map<String, MqttQoS> subTopics = new HashMap();
+
+        List<String> subQos0Topics = Arrays.asList(config.getProperty("subQos0Topics", "").split("\\s*,\\s*"));
+        for (String topic : subQos0Topics) {
+            if (!topic.trim().isEmpty()) {
+                subTopics.put(topic, MqttQoS.AT_MOST_ONCE);
+            }
+        }
+
+        List<String> subQos1Topics = Arrays.asList(config.getProperty("subQos1Topics", "").split("\\s*,\\s*"));
+        for (String topic : subQos1Topics) {
+            if (!topic.trim().isEmpty()) {
+                subTopics.put(topic, MqttQoS.AT_LEAST_ONCE);
+            }
+        }
+
+        List<String> subQos2Topics = Arrays.asList(config.getProperty("subQos2Topics", "").split("\\s*,\\s*"));
+        for (String topic : subQos2Topics) {
+            if (!topic.trim().isEmpty()) {
+                subTopics.put(topic, MqttQoS.EXACTLY_ONCE);
+            }
+        }
+
+        subTopics.put(commandTopic, MqttQoS.valueOf(commandQos));
+        subTopics.put(commandRepliesTopic, MqttQoS.valueOf(commandQos));
+
+        return this.subscribe(subTopics);
     }
 
     /**
@@ -137,6 +235,12 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
      * @return
      */
     public Promise<MqttConnAckMessage> connect(String host, int port) {
+        workerGroup = new NioEventLoopGroup();
+        bootstrap = new Bootstrap();
+        bootstrap.group(this.workerGroup);
+        bootstrap.channel(NioSocketChannel.class);
+        bootstrap.handler(new MyMqttChannelInitializer());
+
         Promise<MqttConnAckMessage> connectFuture = new DefaultPromise<>(this.workerGroup.next());
         this.promiseBroker.setConnectFuture(connectFuture);
         this.bootstrap.remoteAddress(host, port);
@@ -163,6 +267,31 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
         connectFuture.addListener(listener);
 
         return connectFuture;
+    }
+
+    public void reconnect() {   // move to separate thread
+        System.out.println(String.format("Reconnect!"));
+        logger.log(Level.INFO, String.format("Reconnect!"));
+        if (this.channel != null) {
+            this.shutdown();
+        }
+        try {
+            Thread.sleep(this.reconnectDelay);
+            Promise<MqttConnAckMessage> promise = this.connect("176.113.82.112", 1883);
+            promise.addListener(f -> this.subscribeFromConfig());
+        } catch (InterruptedException ex) {
+            Logger.getLogger(MqttClientImpl.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
+        ;
+    }
+
+//    public Boolean isInetAvailable() {
+//
+//    }
+    private void publishPingTimeoutEvent() {
+        System.out.println(String.format("LAMBDA!!! Reconnect!"));
+        logger.log(Level.INFO, String.format("LAMBDA!!! Reconnect!"));
     }
 
     public Promise<MqttSubAckMessage> subscribe(Map<String, MqttQoS> topicsAndQos) {
@@ -257,7 +386,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
                 this.pendingPubAck.remove(pubAckMessage.variableHeader().messageId());
                 logger.log(Level.FINE, String.format("Remove (from pending PUBACK) saved publish message id: %s", pubAckMessage.variableHeader().messageId()));
                 System.out.println(String.format("Remove (from pending PUBACK) saved publish message id %s", pubAckMessage.variableHeader().messageId()));
-//                publishMessage.release();	//???
+//                ReferenceCountUtil.release(publishMessage);
             });
             this.pendingPubAck.put(id, message);
             logger.log(Level.FINE, String.format("Add (to pending PUBACK collection) publish message id: %s", message.variableHeader().packetId()));
@@ -277,7 +406,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
                 this.pendingPubRec.remove(idVariableHeader.messageId());
                 logger.log(Level.FINE, String.format("Remove (from pending PUBREC) saved publish message id: %s", idVariableHeader.messageId()));
                 System.out.println(String.format("Remove (from pending PUBREC) saved publish message id: %s", idVariableHeader.messageId()));
-//                publishMessage.release();	//???
+//                ReferenceCountUtil.release(publishMessage);
             });
             this.pendingPubRec.put(id, message);
             logger.log(Level.FINE, String.format("Add (to pending PUBREC collection) publish message id: %s", message.variableHeader().packetId()));
@@ -402,6 +531,22 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
     private int getNewMessageId() {
         this.nextMessageId.compareAndSet(0xffff, 1);
         return this.nextMessageId.getAndIncrement();
+    }
+
+    public void removePendingSubscriptions() {
+
+    }
+
+    public void removePendingUnsubscriptions() {
+
+    }
+
+    public void removePendingPublishMessages() {
+
+    }
+
+    public void removeAllPendingMessages() {
+
     }
 
     @Scheduled(fixedDelay = 20000, initialDelay = 20000)

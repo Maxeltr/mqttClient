@@ -40,6 +40,7 @@ import io.netty.handler.codec.mqtt.MqttQoS;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.concurrent.DefaultPromise;
 import io.netty.util.concurrent.Promise;
+import java.nio.charset.Charset;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -109,9 +110,9 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
                 this.config.getProperty("clientId", null),
                 MqttProperties.NO_PROPERTIES,
                 this.config.getProperty("willTopic", null),
-                this.config.getProperty("willMessage", "").getBytes(),
+                this.config.getProperty("willMessage", "").getBytes(Charset.forName("UTF-8")),
                 this.config.getProperty("userName", ""),
-                this.config.getProperty("password", "").getBytes()
+                this.config.getProperty("password", "").getBytes(Charset.forName("UTF-8"))
         );
 
         MqttConnectMessage connectMessage = new MqttConnectMessage(connectFixedHeader, connectVariableHeader, connectPayload);

@@ -24,6 +24,7 @@
 package ru.maxeltr.mqttClient.Mqtt;
 
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.mqtt.MqttFixedHeader;
@@ -54,6 +55,7 @@ import ru.maxeltr.mqttClient.Service.MessageHandler;
  *
  * @author Maxim Eltratov <<Maxim.Eltratov@ya.ru>>
  */
+@Sharable
 public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage> {
 
     private static final Logger logger = Logger.getLogger(MqttPublishHandler.class.getName());
@@ -89,9 +91,17 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
     }
 
     @Override
-    public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
+    public void handlerAdded(ChannelHandlerContext ctx) {
         this.ctx = ctx;
     }
+//    @Override
+//    public void channelActive(ChannelHandlerContext ctx) throws Exception {
+//        super.channelActive(ctx);
+//        logger.log(Level.WARNING, String.format("this.ctx = ctx;  %s", ctx.channel()));
+//        System.out.println(String.format("this.ctx = ctx;  %s", ctx.channel()));
+//        this.ctx = ctx;
+//
+//    }
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, MqttMessage msg) throws Exception {
@@ -343,7 +353,6 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
                 variableHeader = MqttMessageIdVariableHeader.from(message.variableHeader().packetId());
                 MqttMessage pubrecMessage = new MqttMessage(fixedHeader, variableHeader);
 
-//                message.payload().retain();	//???
                 channel.writeAndFlush(pubrecMessage);
 
                 System.out.println(String.format(
@@ -364,11 +373,19 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
         }
     }
 
+    public ChannelHandlerContext getChannelHandlerContext() {
+        return this.ctx;
+    }
+
     @Scheduled(fixedDelay = 20000, initialDelay = 20000)
     public void retransmit() {
         System.out.println(String.format("Start retransmission in publish handler"));
         logger.log(Level.FINE, String.format("Start retransmission in publish handler"));
-        Channel channel = this.ctx.channel();
+
+        logger.log(Level.WARNING, String.format("retransmit this.ctx = ctx;  %s", this.ctx));
+        System.out.println(String.format("retransmit this.ctx = ctx;  %s", this.ctx));
+
+        Channel channel = this.getChannelHandlerContext().channel();
 
         //Check amount of publish messages, that pending PUBREL. No need to retransmit PUBREC messages.
         //TODO What to do when amount = x?

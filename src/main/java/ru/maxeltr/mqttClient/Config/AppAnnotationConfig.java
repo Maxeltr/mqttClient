@@ -40,6 +40,7 @@ import java.util.logging.LogManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.context.annotation.Scope;
 import org.springframework.context.event.ApplicationEventMulticaster;
 import org.springframework.context.event.SimpleApplicationEventMulticaster;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
@@ -131,21 +132,25 @@ public class AppAnnotationConfig {
     }
 
     @Bean
+    @Scope("prototype")
     public MqttPingHandler mqttPingHandler(Config config) {
         return new MqttPingHandler(config);
     }
 
     @Bean
+//    @Scope("prototype")
     public MqttPublishHandler mqttPublishHandler(PromiseBroker promiseBroker, @Lazy MessageHandler messageHandler, Config config) {
         return new MqttPublishHandler(promiseBroker, messageHandler, config);
     }
 
     @Bean
+    @Scope("prototype")
     public MqttConnectHandler mqttConnectHandler(PromiseBroker promiseBroker, Config config) {
         return new MqttConnectHandler(promiseBroker, config);
     }
 
     @Bean
+    @Scope("prototype")
     public MqttSubscriptionHandler mqttSubscriptionHandler(PromiseBroker promiseBroker, Config config) {
         return new MqttSubscriptionHandler(promiseBroker, config);
     }

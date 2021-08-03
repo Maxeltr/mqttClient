@@ -32,6 +32,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Base64;
@@ -64,6 +65,8 @@ public class CommandService {
 
     private RmiService rmiService;
 
+    private String commandQos;
+
     private final Map<String, Command> pendingReplyCommands = Collections.synchronizedMap(new LinkedHashMap());
 
     public CommandService(MqttClientImpl mqttClient, Config config, RmiService rmiService) {
@@ -74,6 +77,11 @@ public class CommandService {
         this.commandRepliesTopic = config.getProperty("receivingCommandRepliesTopic", "");
         if (this.commandRepliesTopic.trim().isEmpty()) {
             throw new IllegalStateException("Invalid receivingCommandRepliesTopic property");
+        }
+
+        this.commandQos = config.getProperty("commandQos", "");
+        if (this.commandQos.trim().isEmpty()) {
+            throw new IllegalStateException("Invalid commandQos property");
         }
 
         this.rmiService = rmiService;
@@ -118,7 +126,7 @@ public class CommandService {
         Gson gson = new Gson();
         try {
             String jsonCommand = gson.toJson(reply);
-            this.mqttClient.publish(topic, Unpooled.wrappedBuffer(jsonCommand.getBytes()), MqttQoS.AT_MOST_ONCE, false);
+            this.mqttClient.publish(topic, Unpooled.wrappedBuffer(jsonCommand.getBytes(Charset.forName("UTF-8"))), MqttQoS.valueOf(this.commandQos), false);
         } catch (JsonIOException ex) {
             logger.log(Level.SEVERE, "JsonIOException was thrown. Reply was not sent.", ex);
             System.out.println(String.format("JsonIOException was thrown. Reply was not sent."));
@@ -137,7 +145,7 @@ public class CommandService {
         Gson gson = new Gson();
         try {
             String jsonCommand = gson.toJson(command);
-            this.mqttClient.publish(topic, Unpooled.wrappedBuffer(jsonCommand.getBytes()), MqttQoS.AT_MOST_ONCE, false);
+            this.mqttClient.publish(topic, Unpooled.wrappedBuffer(jsonCommand.getBytes(Charset.forName("UTF-8"))), MqttQoS.valueOf(this.commandQos), false);
         } catch (JsonIOException ex) {
             logger.log(Level.SEVERE, null, ex);
         }

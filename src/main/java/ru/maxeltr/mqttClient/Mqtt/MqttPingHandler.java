@@ -36,6 +36,8 @@ import io.netty.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import ru.maxeltr.mqttClient.Config.Config;
 
 /**
@@ -47,6 +49,9 @@ public class MqttPingHandler extends ChannelInboundHandlerAdapter {
     private static final Logger logger = Logger.getLogger(MqttPingHandler.class.getName());
 
     private final Config config;
+
+    @Autowired
+    private ApplicationEventPublisher applicationEventPublisher;
 
     private ScheduledFuture<?> pingRespTimeout;
 
@@ -67,7 +72,7 @@ public class MqttPingHandler extends ChannelInboundHandlerAdapter {
             ctx.channel().writeAndFlush(new MqttMessage(fixedHeader));
             logger.log(Level.FINE, String.format("Received ping request. Sent ping response. %s.", msg));
             System.out.println(String.format("Received ping request. Sent ping response. %s.", msg));
-
+            ReferenceCountUtil.release(msg);
         } else if (message.fixedHeader().messageType() == MqttMessageType.PINGRESP) {
             logger.log(Level.FINE, String.format("Received ping response %s.", msg));
             System.out.println(String.format("Received ping response %s.", msg));
@@ -101,7 +106,7 @@ public class MqttPingHandler extends ChannelInboundHandlerAdapter {
 //                            ctx.channel().writeAndFlush(new MqttMessage(fHeader));
                             System.out.println(String.format("Ping response was not received for keepAlive time."));
                             logger.log(Level.WARNING, String.format("Ping response was not received for keepAlive time."));
-                            //TODO ?
+                            this.publishPingTimeoutEvent(); //TODO ?
                         }, Integer.parseInt(this.config.getProperty("keepAliveTimer", "20")), TimeUnit.SECONDS);
                     }
                     break;
@@ -109,6 +114,13 @@ public class MqttPingHandler extends ChannelInboundHandlerAdapter {
         } else {
             super.userEventTriggered(ctx, evt);
         }
+
+    }
+
+    private void publishPingTimeoutEvent() {
+        applicationEventPublisher.publishEvent(new PingTimeoutEvent(this, "Ping response was not received for keepAlive time."));
+        System.out.println(String.format("Publish PingTimeoutEvent."));
+        logger.log(Level.WARNING, String.format("Publish PingTimeoutEvent."));
 
     }
 }
