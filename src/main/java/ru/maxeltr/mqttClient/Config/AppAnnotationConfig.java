@@ -160,7 +160,7 @@ public class AppAnnotationConfig {
 
     @Bean
     @Scope("prototype")
-    public ExceptionHandler ExceptionHandler() {
+    public ExceptionHandler exceptionHandler() {
         return new ExceptionHandler();
     }
 
@@ -173,9 +173,10 @@ public class AppAnnotationConfig {
             ChannelHandler mqttPingHandler,
             MqttConnectHandler mqttConnectHandler,
             MqttSubscriptionHandler mqttSubscriptionHandler,
-            ChannelHandler mqttPublishHandler
+            ChannelHandler mqttPublishHandler,
+            ExceptionHandler exceptionHandler
     ) {
-        return new MqttChannelInitializer(mqttDecoder, mqttEncoder, idleStateHandler, mqttPingHandler, mqttConnectHandler, mqttSubscriptionHandler, mqttPublishHandler);
+        return new MqttChannelInitializer(mqttDecoder, mqttEncoder, idleStateHandler, mqttPingHandler, mqttConnectHandler, mqttSubscriptionHandler, mqttPublishHandler, exceptionHandler);
     }
 
     @Bean

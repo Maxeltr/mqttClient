@@ -30,7 +30,6 @@ import io.netty.handler.codec.mqtt.MqttDecoder;
 import io.netty.handler.codec.mqtt.MqttEncoder;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
-import io.netty.handler.timeout.IdleStateHandler;
 
 /**
  *
@@ -38,13 +37,14 @@ import io.netty.handler.timeout.IdleStateHandler;
  */
 public class MqttChannelInitializer extends ChannelInitializer<SocketChannel> {
 
-    private final MqttDecoder mqttDecoder ;
-    private final MqttEncoder mqttEncoder ;
-    private final ChannelHandler idleStateHandler ;
-    private final ChannelHandler mqttPingHandler ;
-    private final ChannelHandler mqttChannelHandler ;
-    private final MqttConnectHandler mqttConnectHandler ;
-    private final MqttSubscriptionHandler mqttSubscriptionHandler ;
+    private final MqttDecoder mqttDecoder;
+    private final MqttEncoder mqttEncoder;
+    private final ChannelHandler idleStateHandler;
+    private final ChannelHandler mqttPingHandler;
+    private final ChannelHandler mqttChannelHandler;
+    private final MqttConnectHandler mqttConnectHandler;
+    private final MqttSubscriptionHandler mqttSubscriptionHandler;
+    private final ExceptionHandler exceptionHandler;
 
     public MqttChannelInitializer(
             MqttDecoder mqttDecoder,
@@ -53,8 +53,8 @@ public class MqttChannelInitializer extends ChannelInitializer<SocketChannel> {
             ChannelHandler mqttPingHandler,
             MqttConnectHandler mqttConnectHandler,
             MqttSubscriptionHandler mqttSubscriptionHandler,
-            ChannelHandler mqttChannelHandler
-
+            ChannelHandler mqttChannelHandler,
+            ExceptionHandler exceptionHandler
     ) {
         this.mqttDecoder = mqttDecoder;
         this.mqttEncoder = mqttEncoder;
@@ -63,6 +63,7 @@ public class MqttChannelInitializer extends ChannelInitializer<SocketChannel> {
         this.mqttConnectHandler = mqttConnectHandler;
         this.mqttSubscriptionHandler = mqttSubscriptionHandler;
         this.mqttChannelHandler = mqttChannelHandler;
+        this.exceptionHandler = exceptionHandler;
     }
 
     @Override
@@ -75,6 +76,7 @@ public class MqttChannelInitializer extends ChannelInitializer<SocketChannel> {
         ch.pipeline().addLast("mqttSubscriptionHandler", this.mqttSubscriptionHandler);
         ch.pipeline().addLast("mqttPublishHandler", this.mqttChannelHandler);
 //        ch.pipeline().addLast(new LoggingHandler(LogLevel.WARN));
+        ch.pipeline().addLast("exceptionHandler", this.exceptionHandler);
 
     }
 

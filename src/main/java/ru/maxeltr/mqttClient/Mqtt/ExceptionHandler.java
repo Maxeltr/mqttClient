@@ -31,6 +31,7 @@ import io.netty.channel.ChannelPromise;
 import java.net.SocketAddress;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 
 /**
  *
@@ -43,7 +44,7 @@ public class ExceptionHandler extends ChannelDuplexHandler {
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         // Uncaught exceptions from inbound handlers will propagate up to this handler
-        logger.log(Level.INFO, String.format("Uncaught exception from inbound handlers %s.", cause.getMessage()));
+        logger.log(Level.INFO, String.format("Uncaught exception from inbound handlers. %n %s", ExceptionUtils.getStackTrace(cause)));
         System.out.println(String.format("Uncaught exception from inbound handlers %s.", cause.getMessage()));
     }
 
@@ -52,7 +53,7 @@ public class ExceptionHandler extends ChannelDuplexHandler {
         ctx.connect(remoteAddress, localAddress, promise.addListener((ChannelFutureListener) (ChannelFuture future) -> {
             if (!future.isSuccess()) {
                 Throwable failureCause = future.cause();
-                logger.log(Level.INFO, String.format("Connection failed. Uncaught exception from outbound handler %s.", failureCause.getMessage()));
+                logger.log(Level.INFO, String.format("Connection failed. Uncaught exception from outbound handler. %n %s", ExceptionUtils.getStackTrace(failureCause)));
                 System.out.println(String.format("Connection failed. Uncaught exception from outbound handler %s.", failureCause.getMessage()));
             }
         }));
@@ -63,7 +64,7 @@ public class ExceptionHandler extends ChannelDuplexHandler {
         ctx.write(msg, promise.addListener((ChannelFutureListener) (ChannelFuture future) -> {
             if (!future.isSuccess()) {
                 Throwable failureCause = future.cause();
-                logger.log(Level.INFO, String.format("Write operation failed. Uncaught exception from outbound handler %s.", failureCause.getMessage()));
+                logger.log(Level.INFO, String.format("Write operation failed. Uncaught exception from outbound handler. %n %s", ExceptionUtils.getStackTrace(failureCause)));
                 System.out.println(String.format("Write operation failed. Uncaught exception from outbound handler %s.", failureCause.getMessage()));
             }
         }));

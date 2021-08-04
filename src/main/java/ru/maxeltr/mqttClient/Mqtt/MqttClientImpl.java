@@ -289,7 +289,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
         } catch (InterruptedException ex) {
             Logger.getLogger(MqttClientImpl.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
+
     }
 
 //    public Boolean isInetAvailable() {
@@ -392,8 +392,9 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
                 this.pendingPubAck.remove(pubAckMessage.variableHeader().messageId());
                 logger.log(Level.FINE, String.format("Remove (from pending PUBACK) saved publish message id: %s", pubAckMessage.variableHeader().messageId()));
                 System.out.println(String.format("Remove (from pending PUBACK) saved publish message id %s", pubAckMessage.variableHeader().messageId()));
-//                ReferenceCountUtil.release(publishMessage);
+                ReferenceCountUtil.release(publishMessage);
             });
+            ReferenceCountUtil.retain(message); //TODO is it nessesary?
             this.pendingPubAck.put(id, message);
             logger.log(Level.FINE, String.format("Add (to pending PUBACK collection) publish message id: %s", message.variableHeader().packetId()));
             System.out.println(String.format("Add (to pending PUBACK collection) publish message id: %s", message.variableHeader().packetId()));
@@ -412,8 +413,9 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
                 this.pendingPubRec.remove(idVariableHeader.messageId());
                 logger.log(Level.FINE, String.format("Remove (from pending PUBREC) saved publish message id: %s", idVariableHeader.messageId()));
                 System.out.println(String.format("Remove (from pending PUBREC) saved publish message id: %s", idVariableHeader.messageId()));
-//                ReferenceCountUtil.release(publishMessage);
+                ReferenceCountUtil.release(publishMessage);
             });
+            ReferenceCountUtil.retain(message); //TODO is it nessesary?
             this.pendingPubRec.put(id, message);
             logger.log(Level.FINE, String.format("Add (to pending PUBREC collection) publish message id: %s", message.variableHeader().packetId()));
             System.out.println(String.format("Add (to pending PUBREC collection) publish message id: %s", message.variableHeader().packetId()));

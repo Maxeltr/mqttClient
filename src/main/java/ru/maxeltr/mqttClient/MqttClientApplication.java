@@ -126,8 +126,8 @@ public class MqttClientApplication {
 //            it.remove(); // avoids a ConcurrentModificationException
 //        }
 
-        Thread.sleep(5000);
-        mqttClientImpl.reconnect();
+//        Thread.sleep(5000);
+//        mqttClientImpl.reconnect();
 
 //        mqttClientImpl.shutdown();
         System.out.println(String.format("End.%n"));
