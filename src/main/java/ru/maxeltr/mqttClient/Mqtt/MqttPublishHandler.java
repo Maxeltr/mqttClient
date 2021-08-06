@@ -24,7 +24,6 @@
 package ru.maxeltr.mqttClient.Mqtt;
 
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.mqtt.MqttFixedHeader;
@@ -36,18 +35,15 @@ import io.netty.handler.codec.mqtt.MqttPublishMessage;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.concurrent.Promise;
-import java.nio.charset.Charset;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
 import ru.maxeltr.mqttClient.Config.Config;
 import ru.maxeltr.mqttClient.Service.MessageHandler;
 
@@ -369,7 +365,7 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
         return this.ctx;
     }
 
-    @Scheduled(fixedDelay = 20000, initialDelay = 20000)
+    @Scheduled(fixedDelay = 20_000, initialDelay = 20_000)
     public void retransmit() {
         if (this.getChannelHandlerContext() == null) {
             System.out.println(String.format("ChannelHandlerContext is null in retransmit method. Cannot retransmit."));

@@ -28,14 +28,10 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelInitializer;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.mqtt.MqttConnAckMessage;
-import io.netty.handler.codec.mqtt.MqttDecoder;
-import io.netty.handler.codec.mqtt.MqttEncoder;
 import io.netty.handler.codec.mqtt.MqttFixedHeader;
 import io.netty.handler.codec.mqtt.MqttMessage;
 import io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader;
@@ -53,7 +49,6 @@ import io.netty.handler.codec.mqtt.MqttTopicSubscription;
 import io.netty.handler.codec.mqtt.MqttUnsubAckMessage;
 import io.netty.handler.codec.mqtt.MqttUnsubscribeMessage;
 import io.netty.handler.codec.mqtt.MqttUnsubscribePayload;
-import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.concurrent.DefaultPromise;
 import io.netty.util.concurrent.Future;
@@ -62,16 +57,12 @@ import io.netty.util.concurrent.GenericFutureListener;
 import io.netty.util.concurrent.Promise;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -79,10 +70,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationListener;
-import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import ru.maxeltr.mqttClient.Config.Config;
-import ru.maxeltr.mqttClient.Service.MessageHandler;
 
 /**
  *
@@ -97,7 +86,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 
     private Channel channel;
 
-    private final MqttChannelInitializer mqttChannelInitializer;
+//    private final MqttChannelInitializer mqttChannelInitializer;
 
     private EventLoopGroup workerGroup;
 
@@ -132,8 +121,8 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 
     private final Map<Integer, MqttPublishMessage> pendingPubAck = Collections.synchronizedMap(new LinkedHashMap());
 
-    public MqttClientImpl(MqttChannelInitializer mqttChannelInitializer, Config config, PromiseBroker promiseBroker) {
-        this.mqttChannelInitializer = mqttChannelInitializer;
+    public MqttClientImpl(Config config, PromiseBroker promiseBroker) {
+//        this.mqttChannelInitializer = mqttChannelInitializer;
         this.config = config;
 //        this.workerGroup = new NioEventLoopGroup();
 //        this.bootstrap = new Bootstrap();
@@ -172,7 +161,6 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 //            ch.pipeline().addLast("mqttPublishHandler", mqttPublishHandler);
 //        }
 //    }
-
     @Override
     public void onApplicationEvent(ApplicationEvent event) {
         if (event instanceof PingTimeoutEvent) {
@@ -240,8 +228,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
         bootstrap.group(this.workerGroup);
         bootstrap.channel(NioSocketChannel.class);
 //        bootstrap.handler(new MyMqttChannelInitializer());
-        MqttChannelInitializer mqttChannelInitializer = (MqttChannelInitializer) MqttClientImpl.this.appContext.getBean("mqttChannelInitializer");
-        bootstrap.handler(mqttChannelInitializer);
+        bootstrap.handler((MqttChannelInitializer) MqttClientImpl.this.appContext.getBean("mqttChannelInitializer"));
 
         Promise<MqttConnAckMessage> connectFuture = new DefaultPromise<>(this.workerGroup.next());
         this.promiseBroker.setConnectFuture(connectFuture);
@@ -282,6 +269,16 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
         if (this.channel != null) {
             this.shutdown();
         }
+
+        Boolean cleanSeesion = Boolean.parseBoolean(this.config.getProperty("cleanSeesion", "true"));
+        if (cleanSeesion) {
+            this.pendingConfirmationSubscriptions.clear();
+            this.pendingConfirmationUnsubscriptions.clear();
+            this.pendingPubRec.clear();
+            this.pendingPubAck.clear();
+            this.activeTopics.clear();
+        }
+
         try {
             Thread.sleep(this.reconnectDelay);
             Promise<MqttConnAckMessage> promise = this.connect(host, 1883);
@@ -557,7 +554,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 
     }
 
-    @Scheduled(fixedDelay = 20000, initialDelay = 20000)
+    @Scheduled(fixedDelay = 200_000, initialDelay = 200_000)
     public void retransmit() {
         System.out.println(String.format("Strart retransmission in MqttClientImpl"));
         logger.log(Level.FINE, String.format("Strart retransmission in MqttClientImpl"));

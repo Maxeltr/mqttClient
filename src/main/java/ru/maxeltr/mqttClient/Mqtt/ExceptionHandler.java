@@ -32,6 +32,8 @@ import java.net.SocketAddress;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 
 /**
  *
@@ -40,6 +42,9 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 public class ExceptionHandler extends ChannelDuplexHandler {
 
     private static final Logger logger = Logger.getLogger(ExceptionHandler.class.getName());
+
+    @Autowired
+    private ApplicationEventPublisher applicationEventPublisher;
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
@@ -69,4 +74,6 @@ public class ExceptionHandler extends ChannelDuplexHandler {
             }
         }));
     }
+
+    
 }

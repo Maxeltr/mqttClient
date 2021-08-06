@@ -38,6 +38,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.scheduling.annotation.Scheduled;
 import ru.maxeltr.mqttClient.Config.Config;
 
 /**
@@ -72,7 +73,7 @@ public class MqttPingHandler extends ChannelInboundHandlerAdapter {
             ctx.channel().writeAndFlush(new MqttMessage(fixedHeader));
             logger.log(Level.FINE, String.format("Received ping request. Sent ping response. %s.", msg));
             System.out.println(String.format("Received ping request. Sent ping response. %s.", msg));
-            ReferenceCountUtil.release(msg);
+//            ReferenceCountUtil.release(msg);
         } else if (message.fixedHeader().messageType() == MqttMessageType.PINGRESP) {
             logger.log(Level.FINE, String.format("Received ping response %s.", msg));
             System.out.println(String.format("Received ping response %s.", msg));
@@ -80,7 +81,7 @@ public class MqttPingHandler extends ChannelInboundHandlerAdapter {
                 this.pingRespTimeout.cancel(true);
                 this.pingRespTimeout = null;
             }
-            ReferenceCountUtil.release(msg);
+//            ReferenceCountUtil.release(msg);
         } else {
             ctx.fireChannelRead(msg);   //ctx.fireChannelRead(ReferenceCountUtil.retain(msg));
         }

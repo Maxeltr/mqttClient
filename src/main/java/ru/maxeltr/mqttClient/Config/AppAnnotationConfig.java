@@ -92,6 +92,9 @@ public class AppAnnotationConfig {
         return service;
     }
 
+    /*
+     * For async calls of methods with @async annotations
+     */
     @Bean
     public Executor taskExecutor() {
         ThreadPoolTaskExecutor threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
@@ -141,7 +144,7 @@ public class AppAnnotationConfig {
     }
 
     @Bean
-    @Scope("prototype")
+//    @Scope("prototype")
     public MqttPublishHandler mqttPublishHandler(PromiseBroker promiseBroker, @Lazy MessageHandler messageHandler, Config config) {
         return new MqttPublishHandler(promiseBroker, messageHandler, config);
     }
@@ -180,8 +183,8 @@ public class AppAnnotationConfig {
     }
 
     @Bean
-    public MqttClientImpl mqttClientImpl(MqttChannelInitializer mqttChannelInitializer, Config config, PromiseBroker promiseBroker) {
-        return new MqttClientImpl(mqttChannelInitializer, config, promiseBroker);
+    public MqttClientImpl mqttClientImpl(Config config, PromiseBroker promiseBroker) {
+        return new MqttClientImpl(config, promiseBroker);
     }
 
     @Bean

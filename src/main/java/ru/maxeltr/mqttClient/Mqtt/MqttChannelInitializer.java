@@ -30,12 +30,16 @@ import io.netty.handler.codec.mqtt.MqttDecoder;
 import io.netty.handler.codec.mqtt.MqttEncoder;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
  * @author Maxim Eltratov <<Maxim.Eltratov@ya.ru>>
  */
 public class MqttChannelInitializer extends ChannelInitializer<SocketChannel> {
+
+    private static final Logger logger = Logger.getLogger(MqttChannelInitializer.class.getName());
 
     private final MqttDecoder mqttDecoder;
     private final MqttEncoder mqttEncoder;
@@ -64,6 +68,7 @@ public class MqttChannelInitializer extends ChannelInitializer<SocketChannel> {
         this.mqttSubscriptionHandler = mqttSubscriptionHandler;
         this.mqttChannelHandler = mqttChannelHandler;
         this.exceptionHandler = exceptionHandler;
+        logger.log(Level.FINE, String.format("MqttChannelInitializer handler create."));
     }
 
     @Override
