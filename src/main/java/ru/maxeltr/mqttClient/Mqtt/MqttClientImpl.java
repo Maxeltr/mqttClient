@@ -63,6 +63,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -264,11 +265,9 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
             throw new IllegalStateException("Invalid host property");
         }
 
-        System.out.println(String.format("Reconnect!"));
+        System.out.println(String.format("Reconnect!%n%n"));
         logger.log(Level.INFO, String.format("Reconnect!"));
-        if (this.channel != null) {
-            this.shutdown();
-        }
+        this.shutdown();
 
         Boolean cleanSeesion = Boolean.parseBoolean(this.config.getProperty("cleanSeesion", "true"));
         if (cleanSeesion) {
@@ -280,9 +279,12 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
         }
 
         try {
-            Thread.sleep(this.reconnectDelay);
-            Promise<MqttConnAckMessage> promise = this.connect(host, 1883);
-            promise.addListener(f -> this.subscribeFromConfig());
+            Thread.sleep(TimeUnit.SECONDS.toMillis(this.reconnectDelay));
+            this.connect(host, 1883, f -> {
+                if (f.isSuccess()) {
+                    this.subscribeFromConfig();
+                }
+            });
         } catch (InterruptedException ex) {
             Logger.getLogger(MqttClientImpl.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -292,10 +294,6 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 //    public Boolean isInetAvailable() {
 //
 //    }
-    private void publishPingTimeoutEvent() {
-        System.out.println(String.format("LAMBDA!!! Reconnect!"));
-        logger.log(Level.INFO, String.format("LAMBDA!!! Reconnect!"));
-    }
 
     public Promise<MqttSubAckMessage> subscribe(Map<String, MqttQoS> topicsAndQos) {
         Promise<MqttSubAckMessage> subscribeFuture = new DefaultPromise<>(this.workerGroup.next());
@@ -554,7 +552,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 
     }
 
-    @Scheduled(fixedDelay = 200_000, initialDelay = 200_000)
+    @Scheduled(fixedDelay = 40_000, initialDelay = 40_000)
     public void retransmit() {
         System.out.println(String.format("Strart retransmission in MqttClientImpl"));
         logger.log(Level.FINE, String.format("Strart retransmission in MqttClientImpl"));

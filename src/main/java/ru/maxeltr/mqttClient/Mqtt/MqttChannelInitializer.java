@@ -46,19 +46,19 @@ public class MqttChannelInitializer extends ChannelInitializer<SocketChannel> {
     private final ChannelHandler idleStateHandler;
     private final ChannelHandler mqttPingHandler;
     private final ChannelHandler mqttChannelHandler;
-    private final MqttConnectHandler mqttConnectHandler;
-    private final MqttSubscriptionHandler mqttSubscriptionHandler;
-    private final ExceptionHandler exceptionHandler;
+    private final ChannelHandler mqttConnectHandler;
+    private final ChannelHandler mqttSubscriptionHandler;
+    private final ChannelHandler exceptionHandler;
 
     public MqttChannelInitializer(
             MqttDecoder mqttDecoder,
             MqttEncoder mqttEncoder,
             ChannelHandler idleStateHandler,
             ChannelHandler mqttPingHandler,
-            MqttConnectHandler mqttConnectHandler,
-            MqttSubscriptionHandler mqttSubscriptionHandler,
+            ChannelHandler mqttConnectHandler,
+            ChannelHandler mqttSubscriptionHandler,
             ChannelHandler mqttChannelHandler,
-            ExceptionHandler exceptionHandler
+            ChannelHandler exceptionHandler
     ) {
         this.mqttDecoder = mqttDecoder;
         this.mqttEncoder = mqttEncoder;

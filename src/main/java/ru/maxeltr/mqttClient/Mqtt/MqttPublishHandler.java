@@ -365,7 +365,7 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
         return this.ctx;
     }
 
-    @Scheduled(fixedDelay = 20_000, initialDelay = 20_000)
+    @Scheduled(fixedDelay = 30_000, initialDelay = 30_000)
     public void retransmit() {
         if (this.getChannelHandlerContext() == null) {
             System.out.println(String.format("ChannelHandlerContext is null in retransmit method. Cannot retransmit."));

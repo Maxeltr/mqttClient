@@ -24,6 +24,7 @@
 package ru.maxeltr.mqttClient.Config;
 
 import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.mqtt.MqttDecoder;
 import io.netty.handler.codec.mqtt.MqttEncoder;
 import io.netty.handler.timeout.IdleStateHandler;
@@ -48,11 +49,14 @@ import org.springframework.remoting.rmi.RmiServiceExporter;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import org.springframework.scheduling.support.PeriodicTrigger;
 import ru.maxeltr.mqttClient.Mqtt.ExceptionHandler;
 import ru.maxeltr.mqttClient.Mqtt.MqttChannelInitializer;
 import ru.maxeltr.mqttClient.Mqtt.MqttClientImpl;
 import ru.maxeltr.mqttClient.Mqtt.MqttConnectHandler;
 import ru.maxeltr.mqttClient.Mqtt.MqttPingHandler;
+import ru.maxeltr.mqttClient.Mqtt.MqttPingScheduleHandler;
 import ru.maxeltr.mqttClient.Mqtt.MqttPublishHandler;
 import ru.maxeltr.mqttClient.Mqtt.MqttSubscriptionHandler;
 import ru.maxeltr.mqttClient.Mqtt.PromiseBroker;
@@ -108,6 +112,32 @@ public class AppAnnotationConfig {
         return threadPoolTaskExecutor;
     }
 
+    /*
+     * For scheduling a ping request with a fixed delay which is defined by config (MqttPingScheduleHandler)
+     */
+     @Bean
+    public ThreadPoolTaskScheduler threadPoolTaskScheduler() {
+        ThreadPoolTaskScheduler threadPoolTaskScheduler = new ThreadPoolTaskScheduler();
+        threadPoolTaskScheduler.setPoolSize(5);
+        threadPoolTaskScheduler.setThreadNamePrefix("ThreadPoolTaskScheduler");
+        return threadPoolTaskScheduler;
+    }
+
+    /*
+     * For scheduling a ping request with a fixed delay which is defined by config (MqttPingScheduleHandler)
+     */
+    @Bean
+    public PeriodicTrigger periodicTrigger(Config config) {
+        String keepAliveTimer = config.getProperty("keepAliveTimer", "");
+        if (keepAliveTimer.trim().isEmpty()) {
+            throw new IllegalStateException("Invalid keepAliveTimer property");
+        }
+        PeriodicTrigger periodicTrigger = new PeriodicTrigger(Long.parseLong(keepAliveTimer, 10), TimeUnit.SECONDS);
+        periodicTrigger.setFixedRate(true);
+        periodicTrigger.setInitialDelay(Long.parseLong(keepAliveTimer, 10));
+        return periodicTrigger;
+    }
+
     @Bean
     public Config config() {
         return new Config(CONFIG_PATHNAME);
@@ -139,12 +169,12 @@ public class AppAnnotationConfig {
 
     @Bean
     @Scope("prototype")
-    public MqttPingHandler mqttPingHandler(Config config) {
-        return new MqttPingHandler(config);
+    public ChannelHandler mqttPingHandler(Config config) {
+        return new MqttPingScheduleHandler(config);   //MqttPingHandler(config);
     }
 
     @Bean
-//    @Scope("prototype")
+    @Scope("prototype")
     public MqttPublishHandler mqttPublishHandler(PromiseBroker promiseBroker, @Lazy MessageHandler messageHandler, Config config) {
         return new MqttPublishHandler(promiseBroker, messageHandler, config);
     }
@@ -174,10 +204,10 @@ public class AppAnnotationConfig {
             MqttEncoder mqttEncoder,
             ChannelHandler idleStateHandler,
             ChannelHandler mqttPingHandler,
-            MqttConnectHandler mqttConnectHandler,
-            MqttSubscriptionHandler mqttSubscriptionHandler,
+            ChannelHandler mqttConnectHandler,
+            ChannelHandler mqttSubscriptionHandler,
             ChannelHandler mqttPublishHandler,
-            ExceptionHandler exceptionHandler
+            ChannelHandler exceptionHandler
     ) {
         return new MqttChannelInitializer(mqttDecoder, mqttEncoder, idleStateHandler, mqttPingHandler, mqttConnectHandler, mqttSubscriptionHandler, mqttPublishHandler, exceptionHandler);
     }
