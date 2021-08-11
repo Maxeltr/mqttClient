@@ -68,7 +68,6 @@ public class MqttChannelInitializer extends ChannelInitializer<SocketChannel> {
         this.mqttSubscriptionHandler = mqttSubscriptionHandler;
         this.mqttChannelHandler = mqttChannelHandler;
         this.exceptionHandler = exceptionHandler;
-        logger.log(Level.FINE, String.format("MqttChannelInitializer handler create."));
     }
 
     @Override
