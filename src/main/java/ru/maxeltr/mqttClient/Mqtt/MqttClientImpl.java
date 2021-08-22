@@ -88,7 +88,6 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
     private Channel channel;
 
 //    private final MqttChannelInitializer mqttChannelInitializer;
-
     private EventLoopGroup workerGroup;
 
     private Bootstrap bootstrap;
@@ -98,6 +97,8 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
     private final Boolean reconnect;
 
     private final Integer reconnectDelay;
+
+    private Boolean reconnecting;
 
     private final PromiseBroker promiseBroker;
 
@@ -265,6 +266,18 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
             throw new IllegalStateException("Invalid host property");
         }
 
+        String port = config.getProperty("port", "");
+        if (port.trim().isEmpty()) {
+            throw new IllegalStateException("Invalid port property");
+        }
+
+        if (this.reconnecting) {
+            logger.log(Level.INFO, String.format("Reconnect() was called while reconnecting."));
+            System.out.println(String.format("Reconnect() was called while reconnecting."));
+            return;
+        }
+        this.reconnecting = true;
+
         System.out.println(String.format("Reconnect!%n%n"));
         logger.log(Level.INFO, String.format("Reconnect!"));
         this.shutdown();
@@ -275,15 +288,16 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
             this.pendingConfirmationUnsubscriptions.clear();
             this.pendingPubRec.clear();
             this.pendingPubAck.clear();
-            this.activeTopics.clear();
         }
+        this.activeTopics.clear();
 
         try {
             Thread.sleep(TimeUnit.SECONDS.toMillis(this.reconnectDelay));
-            this.connect(host, 1883, f -> {
+            this.connect(host, Integer.parseInt(port), f -> {
                 if (f.isSuccess()) {
                     this.subscribeFromConfig();
                 }
+                this.reconnecting = false;
             });
         } catch (InterruptedException ex) {
             Logger.getLogger(MqttClientImpl.class.getName()).log(Level.SEVERE, null, ex);
@@ -294,7 +308,6 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 //    public Boolean isInetAvailable() {
 //
 //    }
-
     public Promise<MqttSubAckMessage> subscribe(Map<String, MqttQoS> topicsAndQos) {
         Promise<MqttSubAckMessage> subscribeFuture = new DefaultPromise<>(this.workerGroup.next());
         MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.SUBSCRIBE, false, MqttQoS.AT_LEAST_ONCE, false, 0);
