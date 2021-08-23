@@ -134,7 +134,7 @@ public class AppAnnotationConfig {
         }
         PeriodicTrigger periodicTrigger = new PeriodicTrigger(Long.parseLong(keepAliveTimer, 10), TimeUnit.SECONDS);
         periodicTrigger.setFixedRate(true);
-        periodicTrigger.setInitialDelay(TimeUnit.SECONDS.toMillis(Long.parseLong(keepAliveTimer, 10)));
+        periodicTrigger.setInitialDelay(Long.parseLong(keepAliveTimer, 10));
         return periodicTrigger;
     }
 

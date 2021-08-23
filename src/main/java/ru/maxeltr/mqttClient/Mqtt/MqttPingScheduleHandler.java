@@ -79,6 +79,12 @@ public class MqttPingScheduleHandler extends ChannelInboundHandlerAdapter {
         this.ctx = ctx;
     }
 
+    public void cancelPing() {
+        this.future.cancel(false);
+        System.out.println(String.format("Ping was canceled."));
+        logger.log(Level.INFO, String.format("Ping was canceled."));
+    }
+
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (!(msg instanceof MqttMessage)) {
@@ -123,7 +129,7 @@ public class MqttPingScheduleHandler extends ChannelInboundHandlerAdapter {
             if (MqttPingScheduleHandler.this.pingRequestWasSent) {
                 System.out.println(String.format("Ping response was not received for keepAlive time."));
                 logger.log(Level.WARNING, String.format("Ping response was not received for keepAlive time."));
-                MqttPingScheduleHandler.this.future.cancel(false);
+//                MqttPingScheduleHandler.this.future.cancel(false);
                 MqttPingScheduleHandler.this.publishPingTimeoutEvent();
                 return;
             }

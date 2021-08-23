@@ -100,6 +100,8 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 
     private Boolean reconnecting;
 
+    private Integer reconnectAttempts;
+
     private final PromiseBroker promiseBroker;
 
     private final AtomicInteger nextMessageId = new AtomicInteger(1);
@@ -124,6 +126,8 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
     private final Map<Integer, MqttPublishMessage> pendingPubAck = Collections.synchronizedMap(new LinkedHashMap());
 
     public MqttClientImpl(Config config, PromiseBroker promiseBroker) {
+        this.reconnecting = false;
+        this.reconnectAttempts = 0;
 //        this.mqttChannelInitializer = mqttChannelInitializer;
         this.config = config;
 //        this.workerGroup = new NioEventLoopGroup();
@@ -167,9 +171,16 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
     public void onApplicationEvent(ApplicationEvent event) {
         if (event instanceof PingTimeoutEvent) {
             if (this.reconnect) {
-                this.reconnect();
+                this.reconnect((MqttPingScheduleHandler) event.getSource());
             }
         }
+    }
+
+    public void clearPendingMessages() {
+        this.pendingConfirmationSubscriptions.clear();
+        this.pendingConfirmationUnsubscriptions.clear();
+        this.pendingPubRec.clear();
+        this.pendingPubAck.clear();
     }
 
     public Promise<MqttSubAckMessage> subscribeFromConfig() {
@@ -260,7 +271,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
         return connectFuture;
     }
 
-    public void reconnect() {   // move to separate thread
+    public void reconnect(MqttPingScheduleHandler pingHandler) {
         String host = config.getProperty("host", "");
         if (host.trim().isEmpty()) {
             throw new IllegalStateException("Invalid host property");
@@ -272,22 +283,20 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
         }
 
         if (this.reconnecting) {
-            logger.log(Level.INFO, String.format("Reconnect() was called while reconnecting."));
-            System.out.println(String.format("Reconnect() was called while reconnecting."));
+            logger.log(Level.INFO, String.format("Unable to start reconnecting. The connection is being reconnected."));
+            System.out.println(String.format("Unable to start reconnecting. The connection is being reconnected."));
             return;
         }
         this.reconnecting = true;
+        this.reconnectAttempts = this.reconnectAttempts + 1;
 
-        System.out.println(String.format("Reconnect!%n%n"));
-        logger.log(Level.INFO, String.format("Reconnect!"));
+        System.out.println(String.format("Start reconnect! Attempt %s. %n%n", this.reconnectAttempts));
+        logger.log(Level.INFO, String.format("Start reconnect! Attempt %s.", this.reconnectAttempts));
         this.shutdown();
 
         Boolean cleanSeesion = Boolean.parseBoolean(this.config.getProperty("cleanSeesion", "true"));
         if (cleanSeesion) {
-            this.pendingConfirmationSubscriptions.clear();
-            this.pendingConfirmationUnsubscriptions.clear();
-            this.pendingPubRec.clear();
-            this.pendingPubAck.clear();
+            this.clearPendingMessages();
         }
         this.activeTopics.clear();
 
@@ -295,7 +304,10 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
             Thread.sleep(TimeUnit.SECONDS.toMillis(this.reconnectDelay));
             this.connect(host, Integer.parseInt(port), f -> {
                 if (f.isSuccess()) {
+                    logger.log(Level.INFO, String.format("Reconnection is successful."));
+                    System.out.println(String.format("Reconnection is successful."));
                     this.subscribeFromConfig();
+                    pingHandler.cancelPing();
                 }
                 this.reconnecting = false;
             });
@@ -326,7 +338,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
         MqttSubscribeMessage message = new MqttSubscribeMessage(fixedHeader, variableHeader, payload);
         this.promiseBroker.add(id, subscribeFuture);
         subscribeFuture.addListener((FutureListener) (Future f) -> {
-            try {
+//            try {
                 MqttSubAckMessage subAckMessage = (MqttSubAckMessage) f.get();
                 MqttSubscribeMessage subscribeMessage = MqttClientImpl.this.pendingConfirmationSubscriptions.get(subAckMessage.variableHeader().messageId());
                 if (subscribeMessage == null) {
@@ -357,11 +369,11 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
                 MqttClientImpl.this.pendingConfirmationSubscriptions.remove(subAckMessage.variableHeader().messageId());
                 logger.log(Level.FINE, String.format("Remove (from pending subscriptions) saved subscription message id: %s", subAckMessage.variableHeader().messageId()));
                 System.out.println(String.format("Remove (from pending subscriptions) saved subscription message id %s", subAckMessage.variableHeader().messageId()));
-            } catch (InterruptedException ex) {
-                logger.log(Level.SEVERE, null, ex);
-            } catch (ExecutionException ex) {
-                logger.log(Level.SEVERE, null, ex);
-            }
+//            } catch (InterruptedException ex) {
+//                logger.log(Level.SEVERE, null, ex);
+//            } catch (ExecutionException ex) {
+//                logger.log(Level.SEVERE, null, ex);
+//            }
         });
 
         this.pendingConfirmationSubscriptions.put(id, message);
