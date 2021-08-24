@@ -561,22 +561,6 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
         return this.nextMessageId.getAndIncrement();
     }
 
-    public void removePendingSubscriptions() {
-
-    }
-
-    public void removePendingUnsubscriptions() {
-
-    }
-
-    public void removePendingPublishMessages() {
-
-    }
-
-    public void removeAllPendingMessages() {
-
-    }
-
     @Scheduled(fixedDelay = 40_000, initialDelay = 40_000)
     public void retransmit() {
         System.out.println(String.format("Strart retransmission in MqttClientImpl"));

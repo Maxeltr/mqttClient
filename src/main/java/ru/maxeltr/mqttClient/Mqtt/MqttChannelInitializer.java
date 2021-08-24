@@ -45,7 +45,7 @@ public class MqttChannelInitializer extends ChannelInitializer<SocketChannel> {
     private final MqttEncoder mqttEncoder;
     private final ChannelHandler idleStateHandler;
     private final ChannelHandler mqttPingHandler;
-    private final ChannelHandler mqttChannelHandler;
+    private final ChannelHandler mqttPublishHandler;
     private final ChannelHandler mqttConnectHandler;
     private final ChannelHandler mqttSubscriptionHandler;
     private final ChannelHandler exceptionHandler;
@@ -57,7 +57,7 @@ public class MqttChannelInitializer extends ChannelInitializer<SocketChannel> {
             ChannelHandler mqttPingHandler,
             ChannelHandler mqttConnectHandler,
             ChannelHandler mqttSubscriptionHandler,
-            ChannelHandler mqttChannelHandler,
+            ChannelHandler mqttPublishHandler,
             ChannelHandler exceptionHandler
     ) {
         this.mqttDecoder = mqttDecoder;
@@ -66,7 +66,7 @@ public class MqttChannelInitializer extends ChannelInitializer<SocketChannel> {
         this.mqttPingHandler = mqttPingHandler;
         this.mqttConnectHandler = mqttConnectHandler;
         this.mqttSubscriptionHandler = mqttSubscriptionHandler;
-        this.mqttChannelHandler = mqttChannelHandler;
+        this.mqttPublishHandler = mqttPublishHandler;
         this.exceptionHandler = exceptionHandler;
     }
 
@@ -78,7 +78,7 @@ public class MqttChannelInitializer extends ChannelInitializer<SocketChannel> {
         ch.pipeline().addLast("mqttPingHandler", this.mqttPingHandler);
         ch.pipeline().addLast("mqttConnectHandler", this.mqttConnectHandler);
         ch.pipeline().addLast("mqttSubscriptionHandler", this.mqttSubscriptionHandler);
-        ch.pipeline().addLast("mqttPublishHandler", this.mqttChannelHandler);
+        ch.pipeline().addLast("mqttPublishHandler", this.mqttPublishHandler);
 //        ch.pipeline().addLast(new LoggingHandler(LogLevel.WARN));
         ch.pipeline().addLast("exceptionHandler", this.exceptionHandler);
 
