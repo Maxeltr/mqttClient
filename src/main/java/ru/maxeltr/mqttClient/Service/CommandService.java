@@ -45,6 +45,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.springframework.scheduling.annotation.Async;
 import ru.maxeltr.mqttClient.Config.Config;
+import ru.maxeltr.mqttClient.Mqtt.MessageDispatcher;
 import ru.maxeltr.mqttClient.Mqtt.MqttClientImpl;
 
 /**
@@ -55,22 +56,19 @@ public class CommandService {
 
     private static final Logger logger = Logger.getLogger(CommandService.class.getName());
 
-    private MqttClientImpl mqttClient;
-
     private Config config;
 
     private List<String> allowedCommands;
 
     private String commandRepliesTopic;
 
-    private RmiService rmiService;
-
     private String commandQos;
+
+    private MessageDispatcher messageDispatcher;
 
     private final Map<String, Command> pendingReplyCommands = Collections.synchronizedMap(new LinkedHashMap());
 
-    public CommandService(MqttClientImpl mqttClient, Config config, RmiService rmiService) {
-        this.mqttClient = mqttClient;
+    public CommandService(Config config) {
         this.config = config;
         this.allowedCommands = Arrays.asList(this.config.getProperty("allowedCommands", "").split("\\s*,\\s*"));
 
@@ -83,9 +81,10 @@ public class CommandService {
         if (this.commandQos.trim().isEmpty()) {
             throw new IllegalStateException("Invalid commandQos property");
         }
+    }
 
-        this.rmiService = rmiService;
-//	this.rmiService.setListener((Command command, String topic) -> CommandService.this.sendResponse(Command command, String topic));
+    public void setMessageDispatcher(MessageDispatcher messageDispatcher) {
+        this.messageDispatcher = messageDispatcher;
     }
 
     @Async
@@ -123,32 +122,16 @@ public class CommandService {
     }
 
     public void sendResponse(String topic, Reply reply) {
-        Gson gson = new Gson();
-        try {
-            String jsonCommand = gson.toJson(reply);
-            this.mqttClient.publish(topic, Unpooled.wrappedBuffer(jsonCommand.getBytes(Charset.forName("UTF-8"))), MqttQoS.valueOf(this.commandQos), false);
-        } catch (JsonIOException ex) {
-            logger.log(Level.SEVERE, "JsonIOException was thrown. Reply was not sent.", ex);
-            System.out.println(String.format("JsonIOException was thrown. Reply was not sent."));
-        }
-        logger.log(Level.INFO, String.format("Reply %s was sent. id=%s, timestamp=%s, result=%s.", reply.getName(), reply.getCommandId(), reply.getTimestamp(), reply.getResult()));
-        System.out.println(String.format("Reply %s was sent. id=%s, timestamp=%s, result=%s.", reply.getName(), reply.getCommandId(), reply.getTimestamp(), reply.getResult()));
+        this.messageDispatcher.send(topic, this.commandQos, reply);
     }
 
     @Async
-    public void sendCommand(Command command, String topic) {
+    public void sendCommand(String topic, Command command) {
         command.setReplyTo(this.commandRepliesTopic);
         long timestamp = Instant.now().toEpochMilli();
         command.setTimestamp(String.valueOf(timestamp));
 
-//        this.pendingReplyCommands.put(command.getId(), Consumer<String> callback);
-        Gson gson = new Gson();
-        try {
-            String jsonCommand = gson.toJson(command);
-            this.mqttClient.publish(topic, Unpooled.wrappedBuffer(jsonCommand.getBytes(Charset.forName("UTF-8"))), MqttQoS.valueOf(this.commandQos), false);
-        } catch (JsonIOException ex) {
-            logger.log(Level.SEVERE, null, ex);
-        }
+        this.messageDispatcher.send(topic, this.commandQos, command);
     }
 
     @Async

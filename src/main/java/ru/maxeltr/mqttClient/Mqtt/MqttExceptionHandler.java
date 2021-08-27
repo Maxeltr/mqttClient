@@ -39,9 +39,9 @@ import org.springframework.context.ApplicationEventPublisher;
  *
  * @author Maxim Eltratov <<Maxim.Eltratov@ya.ru>>
  */
-public class ExceptionHandler extends ChannelDuplexHandler {
+public class MqttExceptionHandler extends ChannelDuplexHandler {
 
-    private static final Logger logger = Logger.getLogger(ExceptionHandler.class.getName());
+    private static final Logger logger = Logger.getLogger(MqttExceptionHandler.class.getName());
 
     @Autowired
     private ApplicationEventPublisher applicationEventPublisher;

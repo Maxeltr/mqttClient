@@ -26,24 +26,15 @@ package ru.maxeltr.mqttClient.Service;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
-import io.netty.handler.codec.mqtt.MqttMessage;
 import io.netty.handler.codec.mqtt.MqttPublishMessage;
 import io.netty.handler.codec.mqtt.MqttPublishVariableHeader;
 import io.netty.util.ReferenceCountUtil;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.springframework.scheduling.annotation.Async;
 import ru.maxeltr.mqttClient.Config.Config;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
+import ru.maxeltr.mqttClient.Mqtt.MessageDispatcher;
 
 /**
  *
@@ -53,17 +44,16 @@ public class MessageHandler {
 
     private static final Logger logger = Logger.getLogger(MessageHandler.class.getName());
 
-    Config config;
+    private Config config;
 
-    CommandService commandService;
+    private String commandTopic;
 
-    String commandTopic;
+    private String commandRepliesTopic;
 
-    String commandRepliesTopic;
+    private MessageDispatcher messageDispatcher;
 
-    public MessageHandler(CommandService commandService, Config config) {
+    public MessageHandler(Config config) {
         this.config = config;
-        this.commandService = commandService;
 
         this.commandTopic = config.getProperty("receivingCommandsTopic", "");
         if (this.commandTopic.trim().isEmpty()) {
@@ -74,6 +64,10 @@ public class MessageHandler {
         if (this.commandRepliesTopic.trim().isEmpty()) {
             throw new IllegalStateException("Invalid receivingCommandRepliesTopic property");
         }
+    }
+
+    public void setMessageDispatcher(MessageDispatcher messageDispatcher) {
+        this.messageDispatcher = messageDispatcher;
     }
 
     @Async
@@ -93,11 +87,10 @@ public class MessageHandler {
                 command = gson.fromJson(payload, Command.class);
                 logger.log(Level.INFO, String.format("Command %s was received. id=%s, timestamp=%s, replyTo=%s, arguments=%s.", command.getName(), command.getId(), command.getTimestamp(), command.getReplyTo(), command.getArguments()));
                 System.out.println(String.format("Command %s was received. id=%s, timestamp=%s, replyTo=%s, arguments=%s.", command.getName(), command.getId(), command.getTimestamp(), command.getReplyTo(), command.getArguments()));
-                this.commandService.execute(command);
+                this.messageDispatcher.execute(command);
             } catch (JsonSyntaxException | NullPointerException ex) {
                 logger.log(Level.SEVERE, "Malformed Json or empty message payload.", ex);
                 System.out.println(String.format("Malformed Json or empty message payload."));
-                return;
             } finally {
                 ReferenceCountUtil.release(message);
             }
@@ -107,11 +100,10 @@ public class MessageHandler {
                 Reply reply = gson.fromJson(payload, Reply.class);
                 logger.log(Level.INFO, String.format("Reply %s was received. id=%s, timestamp=%s, result=%s.", reply.getName(), reply.getCommandId(), reply.getTimestamp(), reply.getResult()));
                 System.out.println(String.format("Reply %s was received. id=%s, timestamp=%s, result=%s.", reply.getName(), reply.getCommandId(), reply.getTimestamp(), reply.getResult()));
-                this.commandService.handleReply(reply);
+                this.messageDispatcher.handleReply(reply);
             } catch (JsonSyntaxException | NullPointerException ex) {
                 logger.log(Level.SEVERE, "Malformed Json or empty message payload.", ex);
                 System.out.println(String.format("Malformed Json or empty message payload."));
-                return;
             } finally {
                 ReferenceCountUtil.release(message);
             }

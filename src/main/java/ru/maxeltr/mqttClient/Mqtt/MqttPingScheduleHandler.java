@@ -53,7 +53,7 @@ public class MqttPingScheduleHandler extends ChannelInboundHandlerAdapter {
     @Autowired
     private ApplicationEventPublisher applicationEventPublisher;
 
-    @Autowired
+//    @Autowired
     private ThreadPoolTaskScheduler taskScheduler;
 
     @Autowired
@@ -65,8 +65,9 @@ public class MqttPingScheduleHandler extends ChannelInboundHandlerAdapter {
 
     private ScheduledFuture<?> future;
 
-    public MqttPingScheduleHandler(Config config) {
+    public MqttPingScheduleHandler(Config config, ThreadPoolTaskScheduler taskScheduler) {
         this.config = config;
+        this.taskScheduler = taskScheduler;
     }
 
     @PostConstruct
@@ -81,8 +82,8 @@ public class MqttPingScheduleHandler extends ChannelInboundHandlerAdapter {
 
     public void cancelPing() {
         this.future.cancel(false);
-        System.out.println(String.format("Ping was canceled."));
-        logger.log(Level.INFO, String.format("Ping was canceled."));
+        System.out.println(String.format("Pinging was canceled."));
+        logger.log(Level.INFO, String.format("Pinging was canceled."));
     }
 
     @Override

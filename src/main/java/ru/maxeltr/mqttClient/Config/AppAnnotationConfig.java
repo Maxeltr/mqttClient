@@ -24,17 +24,10 @@
 package ru.maxeltr.mqttClient.Config;
 
 import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.mqtt.MqttDecoder;
 import io.netty.handler.codec.mqtt.MqttEncoder;
 import io.netty.handler.timeout.IdleStateHandler;
 import java.io.IOException;
-import java.rmi.AlreadyBoundException;
-import java.rmi.Remote;
-import java.rmi.RemoteException;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
-import java.rmi.server.UnicastRemoteObject;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.LogManager;
@@ -45,25 +38,22 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.context.event.ApplicationEventMulticaster;
 import org.springframework.context.event.SimpleApplicationEventMulticaster;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
-import org.springframework.remoting.rmi.RmiServiceExporter;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.support.PeriodicTrigger;
-import ru.maxeltr.mqttClient.Mqtt.ExceptionHandler;
+import ru.maxeltr.mqttClient.Mqtt.MessageDispatcher;
+import ru.maxeltr.mqttClient.Mqtt.MqttExceptionHandler;
 import ru.maxeltr.mqttClient.Mqtt.MqttChannelInitializer;
 import ru.maxeltr.mqttClient.Mqtt.MqttClientImpl;
 import ru.maxeltr.mqttClient.Mqtt.MqttConnectHandler;
-import ru.maxeltr.mqttClient.Mqtt.MqttPingHandler;
 import ru.maxeltr.mqttClient.Mqtt.MqttPingScheduleHandler;
 import ru.maxeltr.mqttClient.Mqtt.MqttPublishHandler;
 import ru.maxeltr.mqttClient.Mqtt.MqttSubscriptionHandler;
 import ru.maxeltr.mqttClient.Mqtt.PromiseBroker;
 import ru.maxeltr.mqttClient.Service.CommandService;
 import ru.maxeltr.mqttClient.Service.MessageHandler;
-import ru.maxeltr.mqttClient.Service.RmiService;
-import ru.maxeltr.mqttClient.Service.RmiServiceImpl;
 
 /**
  *
@@ -72,7 +62,7 @@ import ru.maxeltr.mqttClient.Service.RmiServiceImpl;
 @Configuration
 @EnableAsync
 @EnableScheduling
-public class AppAnnotationConfig {
+public class AppAnnotationConfig  {
 
     public static final String CONFIG_PATHNAME = "Configuration.xml";
 
@@ -85,15 +75,6 @@ public class AppAnnotationConfig {
         } catch (IOException | SecurityException ex) {
             System.err.println("Could not setup logger configuration: " + ex.toString());
         }
-    }
-
-    @Bean
-    public RmiService rmiService() throws RemoteException, AlreadyBoundException {
-        RmiService service = new RmiServiceImpl();
-        final Registry registry = LocateRegistry.createRegistry(2099);
-//        Remote stub = UnicastRemoteObject.exportObject(service, 0);
-        registry.rebind(UNIC_BINDING_NAME, service);
-        return service;
     }
 
     /*
@@ -115,7 +96,7 @@ public class AppAnnotationConfig {
     /*
      * For scheduling a ping request with a fixed delay which is defined by config (MqttPingScheduleHandler)
      */
-     @Bean
+    @Bean
     public ThreadPoolTaskScheduler threadPoolTaskScheduler() {
         ThreadPoolTaskScheduler threadPoolTaskScheduler = new ThreadPoolTaskScheduler();
         threadPoolTaskScheduler.setPoolSize(5);
@@ -169,8 +150,8 @@ public class AppAnnotationConfig {
 
     @Bean
     @Scope("prototype")
-    public ChannelHandler mqttPingHandler(Config config) {
-        return new MqttPingScheduleHandler(config);   //MqttPingHandler(config);
+    public ChannelHandler mqttPingHandler(Config config, ThreadPoolTaskScheduler threadPoolTaskScheduler) {
+        return new MqttPingScheduleHandler(config, threadPoolTaskScheduler);   //MqttPingHandler(config);
     }
 
     @Bean
@@ -193,8 +174,8 @@ public class AppAnnotationConfig {
 
     @Bean
     @Scope("prototype")
-    public ExceptionHandler exceptionHandler() {
-        return new ExceptionHandler();
+    public MqttExceptionHandler exceptionHandler() {
+        return new MqttExceptionHandler();
     }
 
     @Bean
@@ -218,13 +199,18 @@ public class AppAnnotationConfig {
     }
 
     @Bean
-    public CommandService commandService(MqttClientImpl mqttClient, Config config, RmiService rmiService) {
-        return new CommandService(mqttClient, config, rmiService);
+    public CommandService commandService(Config config) {
+        return new CommandService(config);
     }
 
     @Bean
-    public MessageHandler messageHandler(CommandService commandService, Config config) {
-        return new MessageHandler(commandService, config);
+    public MessageHandler messageHandler(Config config) {
+        return new MessageHandler(config);
+    }
+
+    @Bean
+    public MessageDispatcher messageDispatcher(Config config, MqttClientImpl mqttClientImpl, CommandService commandService, MessageHandler messageHandler) {
+        return new MessageDispatcher(config, mqttClientImpl, commandService, messageHandler);
     }
 
     /**

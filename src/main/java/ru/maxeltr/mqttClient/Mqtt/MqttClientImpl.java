@@ -106,6 +106,8 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 
     private final AtomicInteger nextMessageId = new AtomicInteger(1);
 
+    private MessageDispatcher messageDispatcher;
+
 //    private final ConcurrentHashMap<Integer, MqttSubscribeMessage> pendingConfirmationSubscriptions = new ConcurrentHashMap<>();
 //
 //    private final ConcurrentHashMap<Integer, MqttUnsubscribeMessage> pendingConfirmationUnsubscriptions = new ConcurrentHashMap<>();
@@ -139,6 +141,10 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
 
         this.reconnect = Boolean.parseBoolean(this.config.getProperty("reconnect", "true"));
         this.reconnectDelay = Integer.parseInt(this.config.getProperty("reconnectDelay", "2"));
+    }
+
+    public void setMessageDispatcher(MessageDispatcher messageDispatcher) {
+        this.messageDispatcher = messageDispatcher;
     }
 
 //    private class MyMqttChannelInitializer extends ChannelInitializer<SocketChannel> {
@@ -312,6 +318,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
                 this.reconnecting = false;
             });
         } catch (InterruptedException ex) {
+            this.reconnecting = false;
             Logger.getLogger(MqttClientImpl.class.getName()).log(Level.SEVERE, null, ex);
         }
 
@@ -339,36 +346,36 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
         this.promiseBroker.add(id, subscribeFuture);
         subscribeFuture.addListener((FutureListener) (Future f) -> {
 //            try {
-                MqttSubAckMessage subAckMessage = (MqttSubAckMessage) f.get();
-                MqttSubscribeMessage subscribeMessage = MqttClientImpl.this.pendingConfirmationSubscriptions.get(subAckMessage.variableHeader().messageId());
-                if (subscribeMessage == null) {
-                    logger.log(Level.WARNING, String.format("Collection of waiting subscriptions returned null instead subscribeMessage"));
-                    System.out.println(String.format("Collection of waiting subscriptions returned null instead subscribeMessage"));
-                    return;
-                }
+            MqttSubAckMessage subAckMessage = (MqttSubAckMessage) f.get();
+            MqttSubscribeMessage subscribeMessage = MqttClientImpl.this.pendingConfirmationSubscriptions.get(subAckMessage.variableHeader().messageId());
+            if (subscribeMessage == null) {
+                logger.log(Level.WARNING, String.format("Collection of waiting subscriptions returned null instead subscribeMessage"));
+                System.out.println(String.format("Collection of waiting subscriptions returned null instead subscribeMessage"));
+                return;
+            }
 
-                List<MqttTopicSubscription> topics = subscribeMessage.payload().topicSubscriptions();
-                List<Integer> subAckQos = subAckMessage.payload().grantedQoSLevels();
-                if (subAckQos.size() != topics.size()) {
-                    logger.log(Level.WARNING, String.format("Number of topics to subscribe is not match number of returned granted QOS. Number of returned QoS %s. Amount topics %s", subAckQos.size(), topics.size()));
-                    System.out.println(String.format("Number of topics to subscribe is not match number of returned granted QOS. Number of returned QoS  %s. Amount topics %s", subAckQos.size(), topics.size()));
-                } else {
-                    for (int i = 0; i < subAckQos.size(); i++) {
-                        if (subAckQos.get(i) == topics.get(i).qualityOfService().value()) {
-                            MqttClientImpl.this.activeTopics.put(topics.get(i).topicName(), topics.get(i));
-                            logger.log(Level.INFO, String.format("Subscribed on topic \"%s\" with Qos %s.", topics.get(i).topicName(), topics.get(i).qualityOfService()));
-                            System.out.println(String.format("Subscribed on topic \"%s\" with Qos %s.", topics.get(i).topicName(), topics.get(i).qualityOfService()));
-                        } else {
-                            logger.log(Level.INFO, String.format("Subscription on topic \"%s\" with Qos %s failed. Returned Qos %s", topics.get(i).topicName(), topics.get(i).qualityOfService(), subAckQos.get(i)));
-                            System.out.println(String.format("Subscription on topic \"%s\" with Qos %s failed. Returned Qos %s", topics.get(i).topicName(), topics.get(i).qualityOfService(), subAckQos.get(i)));
-                        }
-
+            List<MqttTopicSubscription> topics = subscribeMessage.payload().topicSubscriptions();
+            List<Integer> subAckQos = subAckMessage.payload().grantedQoSLevels();
+            if (subAckQos.size() != topics.size()) {
+                logger.log(Level.WARNING, String.format("Number of topics to subscribe is not match number of returned granted QOS. Number of returned QoS %s. Amount topics %s", subAckQos.size(), topics.size()));
+                System.out.println(String.format("Number of topics to subscribe is not match number of returned granted QOS. Number of returned QoS  %s. Amount topics %s", subAckQos.size(), topics.size()));
+            } else {
+                for (int i = 0; i < subAckQos.size(); i++) {
+                    if (subAckQos.get(i) == topics.get(i).qualityOfService().value()) {
+                        MqttClientImpl.this.activeTopics.put(topics.get(i).topicName(), topics.get(i));
+                        logger.log(Level.INFO, String.format("Subscribed on topic \"%s\" with Qos %s.", topics.get(i).topicName(), topics.get(i).qualityOfService()));
+                        System.out.println(String.format("Subscribed on topic \"%s\" with Qos %s.", topics.get(i).topicName(), topics.get(i).qualityOfService()));
+                    } else {
+                        logger.log(Level.INFO, String.format("Subscription on topic \"%s\" with Qos %s failed. Returned Qos %s", topics.get(i).topicName(), topics.get(i).qualityOfService(), subAckQos.get(i)));
+                        System.out.println(String.format("Subscription on topic \"%s\" with Qos %s failed. Returned Qos %s", topics.get(i).topicName(), topics.get(i).qualityOfService(), subAckQos.get(i)));
                     }
-                }
 
-                MqttClientImpl.this.pendingConfirmationSubscriptions.remove(subAckMessage.variableHeader().messageId());
-                logger.log(Level.FINE, String.format("Remove (from pending subscriptions) saved subscription message id: %s", subAckMessage.variableHeader().messageId()));
-                System.out.println(String.format("Remove (from pending subscriptions) saved subscription message id %s", subAckMessage.variableHeader().messageId()));
+                }
+            }
+
+            MqttClientImpl.this.pendingConfirmationSubscriptions.remove(subAckMessage.variableHeader().messageId());
+            logger.log(Level.FINE, String.format("Remove (from pending subscriptions) saved subscription message id: %s", subAckMessage.variableHeader().messageId()));
+            System.out.println(String.format("Remove (from pending subscriptions) saved subscription message id %s", subAckMessage.variableHeader().messageId()));
 //            } catch (InterruptedException ex) {
 //                logger.log(Level.SEVERE, null, ex);
 //            } catch (ExecutionException ex) {
@@ -377,7 +384,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
         });
 
         this.pendingConfirmationSubscriptions.put(id, message);
-        logger.log(Level.FINE, String.format("Add (to pending subscription collection) subscription message id: %s", message));
+        logger.log(Level.FINE, String.format("Add (to pending subscription collection) subscription message %s", message));
         System.out.println(String.format("Add (to pending subscription collection) subscription message %s", message));
 
         this.writeAndFlush(message);
@@ -561,7 +568,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent> {
         return this.nextMessageId.getAndIncrement();
     }
 
-    @Scheduled(fixedDelay = 40_000, initialDelay = 40_000)
+    @Scheduled(fixedDelay = 40000, initialDelay = 40000)
     public void retransmit() {
         System.out.println(String.format("Strart retransmission in MqttClientImpl"));
         logger.log(Level.FINE, String.format("Strart retransmission in MqttClientImpl"));
