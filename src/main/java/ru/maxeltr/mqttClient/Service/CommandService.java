@@ -150,7 +150,7 @@ public class CommandService {
         System.out.println(String.format("CommandService. Start execute command name=%s, id=%s.", command.getName(), command.getId()));
 
         String result = "";
-        String commandPath = config.getProperty(command.getName() + "CommandPath", "");
+        String commandPath = config.getProperty(command.getName() + ".CommandPath", "");
         if (commandPath.trim().isEmpty()) {
             logger.log(Level.WARNING, String.format("%s command path is empty, id=%s", command.getName(), command.getId()));
             System.out.println(String.format("%s command path is empty, id=%s", command.getName(), command.getId()));
