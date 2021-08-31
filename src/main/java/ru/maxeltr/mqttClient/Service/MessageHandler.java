@@ -34,7 +34,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.springframework.scheduling.annotation.Async;
 import ru.maxeltr.mqttClient.Config.Config;
-import ru.maxeltr.mqttClient.Mqtt.MessageDispatcher;
 
 /**
  *

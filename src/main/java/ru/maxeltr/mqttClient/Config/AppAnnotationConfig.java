@@ -43,7 +43,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.support.PeriodicTrigger;
-import ru.maxeltr.mqttClient.Mqtt.MessageDispatcher;
+import ru.maxeltr.mqttClient.Service.MessageDispatcher;
 import ru.maxeltr.mqttClient.Mqtt.MqttExceptionHandler;
 import ru.maxeltr.mqttClient.Mqtt.MqttChannelInitializer;
 import ru.maxeltr.mqttClient.Mqtt.MqttClientImpl;
@@ -53,6 +53,7 @@ import ru.maxeltr.mqttClient.Mqtt.MqttPublishHandler;
 import ru.maxeltr.mqttClient.Mqtt.MqttSubscriptionHandler;
 import ru.maxeltr.mqttClient.Mqtt.PromiseBroker;
 import ru.maxeltr.mqttClient.Service.CommandService;
+import ru.maxeltr.mqttClient.Service.DisplayController;
 import ru.maxeltr.mqttClient.Service.MessageHandler;
 
 /**
@@ -209,8 +210,8 @@ public class AppAnnotationConfig  {
     }
 
     @Bean
-    public MessageDispatcher messageDispatcher(Config config, MqttClientImpl mqttClientImpl, CommandService commandService, MessageHandler messageHandler) {
-        return new MessageDispatcher(config, mqttClientImpl, commandService, messageHandler);
+    public MessageDispatcher messageDispatcher(Config config, MqttClientImpl mqttClientImpl, CommandService commandService, MessageHandler messageHandler, DisplayController displayController) {
+        return new MessageDispatcher(config, mqttClientImpl, commandService, messageHandler, displayController);
     }
 
     /**

@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package ru.maxeltr.mqttClient.Mqtt;
+package ru.maxeltr.mqttClient.Service;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonIOException;
@@ -31,8 +31,11 @@ import java.nio.charset.Charset;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import ru.maxeltr.mqttClient.Config.Config;
+import ru.maxeltr.mqttClient.Mqtt.MqttClientImpl;
 import ru.maxeltr.mqttClient.Service.Command;
 import ru.maxeltr.mqttClient.Service.CommandService;
+import ru.maxeltr.mqttClient.Service.DisplayController;
+import ru.maxeltr.mqttClient.Service.DisplayText;
 import ru.maxeltr.mqttClient.Service.MessageHandler;
 import ru.maxeltr.mqttClient.Service.Reply;
 
@@ -50,14 +53,18 @@ public class MessageDispatcher {
 
     private final MessageHandler messageHandler;
 
-    public MessageDispatcher(Config config, MqttClientImpl mqttClientImpl, CommandService commandService, MessageHandler messageHandler) {
+    private final DisplayController displayController;
+
+    public MessageDispatcher(Config config, MqttClientImpl mqttClientImpl, CommandService commandService, MessageHandler messageHandler, DisplayController displayController) {
         this.mqttClient = mqttClientImpl;
         this.commandService = commandService;
         this.messageHandler = messageHandler;
+        this.displayController = displayController;
 
         this.mqttClient.setMessageDispatcher(this);
         this.commandService.setMessageDispatcher(this);
         this.messageHandler.setMessageDispatcher(this);
+        this.displayController.setMessageDispatcher(this);
     }
 
     public void send(String topic, String Qos, Reply reply) {
@@ -107,6 +114,13 @@ public class MessageDispatcher {
     public void display(String display) {
         System.out.println(String.format("|----------------------------DISPLAY------------------------|%n%s%n|-----------------------------------------------------------|",
                 display
+        ));
+    }
+
+    public void display(Reply reply) {
+        this.displayController.display(reply);	//add
+        System.out.println(String.format("|----------------------------DISPLAY------------------------|%n%s%n|-----------------------------------------------------------|",
+                reply
         ));
     }
 }

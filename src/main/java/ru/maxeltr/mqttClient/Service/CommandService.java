@@ -45,7 +45,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.springframework.scheduling.annotation.Async;
 import ru.maxeltr.mqttClient.Config.Config;
-import ru.maxeltr.mqttClient.Mqtt.MessageDispatcher;
 import ru.maxeltr.mqttClient.Mqtt.MqttClientImpl;
 
 /**
@@ -143,6 +142,9 @@ public class CommandService {
         } catch (IOException ex) {
             Logger.getLogger(MessageHandler.class.getName()).log(Level.SEVERE, null, ex);
         }
+
+        DisplayText displayText = new DisplayText(reply.getName() + reply.getTimestamp());
+        this.messageDispatcher.display(reply);
     }
 
     private String launch(Command command, String arguments) {

@@ -45,8 +45,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer, WebSer
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        config.enableSimpleBroker("/topic");
-        config.setApplicationDestinationPrefixes("/app");
+        config.enableSimpleBroker(this.config.getProperty("destinationBrokerPrefix", ""));
+        config.setApplicationDestinationPrefixes(this.config.getProperty("destinationApplicationPrefix", ""));
     }
 
     @Override
@@ -55,8 +55,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer, WebSer
     }
 
     @Override
-    public void customize(ConfigurableServletWebServerFactory factory){
+    public void customize(ConfigurableServletWebServerFactory factory) {
         int port = Integer.parseInt(config.getProperty("localServerPort", "8028"));
-    factory.setPort(port);
-  }
+        factory.setPort(port);
+    }
 }
