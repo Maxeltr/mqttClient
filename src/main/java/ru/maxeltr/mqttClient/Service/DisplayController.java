@@ -27,13 +27,6 @@ public class DisplayController {
         this.messageDispatcher = messageDispatcher;
     }
 
-    @MessageMapping("/hello")
-    @SendTo("/topic/greetings")
-    public Greeting greeting(HelloMessage message) throws Exception {
-        Thread.sleep(500); // simulated delay
-        return new Greeting("Hello, " + HtmlUtils.htmlEscape(message.getName()) + "!");
-    }
-
     //@SendTo("/topic/screenshots")
     public void display(Reply reply) {
         simpMessagingTemplate.convertAndSend("/topic/replies", reply);

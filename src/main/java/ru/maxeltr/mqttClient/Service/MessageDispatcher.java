@@ -32,12 +32,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import ru.maxeltr.mqttClient.Config.Config;
 import ru.maxeltr.mqttClient.Mqtt.MqttClientImpl;
-import ru.maxeltr.mqttClient.Service.Command;
-import ru.maxeltr.mqttClient.Service.CommandService;
-import ru.maxeltr.mqttClient.Service.DisplayController;
-import ru.maxeltr.mqttClient.Service.DisplayText;
-import ru.maxeltr.mqttClient.Service.MessageHandler;
-import ru.maxeltr.mqttClient.Service.Reply;
 
 /**
  *

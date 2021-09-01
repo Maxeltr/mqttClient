@@ -143,7 +143,6 @@ public class CommandService {
             Logger.getLogger(MessageHandler.class.getName()).log(Level.SEVERE, null, ex);
         }
 
-        DisplayText displayText = new DisplayText(reply.getName() + reply.getTimestamp());
         this.messageDispatcher.display(reply);
     }
 

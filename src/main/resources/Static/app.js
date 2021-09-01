@@ -3,12 +3,7 @@ var stompClient = null;
 function setConnected(connected) {
     $("#connect").prop("disabled", connected);
     $("#disconnect").prop("disabled", !connected);
-    if (connected) {
-        $("#conversation").show();
-    } else {
-        $("#conversation").hide();
-    }
-    $("#greetings").html("");
+
 }
 
 function connect() {
@@ -17,9 +12,6 @@ function connect() {
     stompClient.connect({}, function (frame) {
         setConnected(true);
         console.log('Connected: ' + frame);
-        stompClient.subscribe('/topic/greetings', function (greeting) {
-            showGreeting(JSON.parse(greeting.body).content);
-        });
         stompClient.subscribe('/topic/replies', function (message) {
             showReplies(JSON.parse(message.body));
         });
@@ -34,23 +26,24 @@ function disconnect() {
     console.log("Disconnected");
 }
 
-function sendName() {
-    stompClient.send("/app/hello", {}, JSON.stringify({'name': $("#name").val()}));
-}
-
 function createCommand(name) {
     stompClient.send("/app/createCommand", {}, JSON.stringify({'name': name}));
     console.log('create command: ' + name);
 }
 
-function showGreeting(message) {
-    $("#greetings").append("<tr><td>" + message + "</td></tr>");
+function showReplies(message) {
+    console.log('message: ' + message.name);
+    document.getElementById(message.name + '-timestamp').innerHTML = message.timestamp;
+    var image = new Image();
+    image.src = 'data:image/png;base64,' + message.payload;
+    document.getElementById(message.name + '-payload').innerHTML = '<img src="' + image.src + '" class="img-fluid" alt="...">';
+    var saveButton = document.getElementById(message.name + '-save');
+    saveButton.setAttribute('href', image.src);
+    saveButton.classList.remove("disabled");
+
 }
 
-function showReplies(message) {
-    $("#" + message.name).val(message.timestamp);
-    console.log('message: ' + message.id);
-}
+
 
 $(function () {
     $("form").on('submit', function (e) {
@@ -62,12 +55,12 @@ $(function () {
     $("#disconnect").click(function () {
         disconnect();
     });
-    $("#send").click(function () {
-        sendName();
-    });
     $("#takeScreenshot").click(function () {
-        console.log('create takeScreenshot command: ');
         createCommand('takeScreenshot');
     });
+
+
 });
+
+
 
