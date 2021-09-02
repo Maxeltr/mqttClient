@@ -43,6 +43,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.support.PeriodicTrigger;
+import org.springframework.stereotype.Controller;
 import ru.maxeltr.mqttClient.Service.MessageDispatcher;
 import ru.maxeltr.mqttClient.Mqtt.MqttExceptionHandler;
 import ru.maxeltr.mqttClient.Mqtt.MqttChannelInitializer;
@@ -55,6 +56,7 @@ import ru.maxeltr.mqttClient.Mqtt.PromiseBroker;
 import ru.maxeltr.mqttClient.Service.CommandService;
 import ru.maxeltr.mqttClient.Service.DisplayController;
 import ru.maxeltr.mqttClient.Service.MessageHandler;
+import ru.maxeltr.mqttClient.Service.RemoteCommandController;
 
 /**
  *
@@ -63,7 +65,7 @@ import ru.maxeltr.mqttClient.Service.MessageHandler;
 @Configuration
 @EnableAsync
 @EnableScheduling
-public class AppAnnotationConfig  {
+public class AppAnnotationConfig {
 
     public static final String CONFIG_PATHNAME = "Configuration.xml";
 
@@ -213,6 +215,12 @@ public class AppAnnotationConfig  {
     public MessageDispatcher messageDispatcher(Config config, MqttClientImpl mqttClientImpl, CommandService commandService, MessageHandler messageHandler, DisplayController displayController) {
         return new MessageDispatcher(config, mqttClientImpl, commandService, messageHandler, displayController);
     }
+
+//    @Bean
+//    @Controller
+//    public RemoteCommandController remoteCommandController(Config config, CommandService commandService) {
+//        return new RemoteCommandController(config, commandService);
+//    }
 
     /**
      * For creating Asynchronous Events

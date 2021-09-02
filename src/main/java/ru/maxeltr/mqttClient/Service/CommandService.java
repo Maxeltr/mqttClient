@@ -94,15 +94,21 @@ public class CommandService {
         HashMap<String, String> isValid = this.validate(command);
         if (!Boolean.parseBoolean(isValid.get("isValid"))) {
             if (replyTopic != null && !replyTopic.trim().isEmpty()) {
-                this.sendResponse(replyTopic, new Reply(command.getId(), command.getName(), timestamp, "Command not allowed.", "fail"));
+                this.send(replyTopic, new Reply(command.getId(), command.getName(), timestamp, "Command not allowed.", "fail"));
             }
-            logger.log(Level.INFO, String.format("Command name=%s, id=%s is not valid format. Arguments: %s", command.getName(), command.getId(), command.getArguments()));
-            System.out.println(String.format("Command name=%s, id=%s is not valid format. Arguments: %s", command.getName(), command.getId(), command.getArguments()));
+            logger.log(Level.INFO, String.format(
+                    "Command has invalid format. %s",
+                    command
+            ));
+            System.out.println(String.format(
+                    "Command has invalid format. %s",
+                    command
+            ));
             return;
         }
 
         if (!this.allowedCommands.contains(command.getName())) {
-            this.sendResponse(replyTopic, new Reply(command.getId(), command.getName(), timestamp, isValid.get("message"), "fail"));
+            this.send(replyTopic, new Reply(command.getId(), command.getName(), timestamp, isValid.get("message"), "fail"));
             logger.log(Level.INFO, String.format("Command not allowed name=%s, id=%s.", command.getName(), command.getId()));
             System.out.println(String.format("Command not allowed name=%s, id=%s.", command.getName(), command.getId()));
 
@@ -113,24 +119,27 @@ public class CommandService {
         if (result.isEmpty()) {
             logger.log(Level.INFO, String.format("Error with executing command name=%s, id=%s. Empty result was returned. Arguments %s", command.getName(), command.getId(), command.getArguments()));
             System.out.println(String.format("Error with executing command name=%s, id=%s. Empty result was returned. Arguments %s", command.getName(), command.getId(), command.getArguments()));
-            this.sendResponse(replyTopic, new Reply(command.getId(), command.getName(), timestamp, "Error with executing command", "fail"));
+            this.send(replyTopic, new Reply(command.getId(), command.getName(), timestamp, "Error with executing command", "fail"));
             return;
         }
 
-        this.sendResponse(replyTopic, new Reply(command.getId(), command.getName(), timestamp, result, "ok"));
-    }
-
-    public void sendResponse(String topic, Reply reply) {
-        this.messageDispatcher.send(topic, this.commandQos, reply);
+        this.send(replyTopic, new Reply(command.getId(), command.getName(), timestamp, result, "ok"));
     }
 
     @Async
-    public void sendCommand(String topic, Command command) {
-        command.setReplyTo(this.commandRepliesTopic);
-        long timestamp = Instant.now().toEpochMilli();
-        command.setTimestamp(String.valueOf(timestamp));
+    public void send(String topic, Reply reply) {
+        this.messageDispatcher.send(topic, this.commandQos, reply);
 
+        logger.log(Level.INFO, String.format("Reply was sent. %s", reply));
+        System.out.println(String.format("Reply was sent. %s", reply));
+    }
+
+    @Async
+    public void send(String topic, Command command) {
         this.messageDispatcher.send(topic, this.commandQos, command);
+
+        logger.log(Level.INFO, String.format("Command was sent. %s", command));
+        System.out.println(String.format("Command was sent. %s", command));
     }
 
     @Async
@@ -139,7 +148,7 @@ public class CommandService {
         File file = new File("c:\\java\\mqttClient\\test.jpg");
         try (FileOutputStream fileOutputStream = new FileOutputStream(file)) {
             fileOutputStream.write(Base64.getDecoder().decode(reply.getPayload()));
-        } catch (IOException ex) {
+        } catch (IOException | IllegalArgumentException ex) {
             Logger.getLogger(MessageHandler.class.getName()).log(Level.SEVERE, null, ex);
         }
 

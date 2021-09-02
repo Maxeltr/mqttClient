@@ -30,53 +30,93 @@ import java.util.logging.Logger;
  *
  * @author Maxim Eltratov <<Maxim.Eltratov@ya.ru>>
  */
-public class Command {
+public class CommandBuilder {
 
-    private static final Logger logger = Logger.getLogger(Command.class.getName());
+    private static final Logger logger = Logger.getLogger(CommandBuilder.class.getName());
 
-    private final String id;
+    private String commandNumber;
 
-    private final String name;
+    private String id;
 
-    private final String target;
+    private String name;
 
-    private final String replyTo;
+    private String target;
 
-    private final String arguments;
+    private String replyTo;
 
-    private final String timestamp;
+    private String arguments;
 
-    public Command(String id, String name, String target, String replyTo, String arguments, String timestamp) {	//add
-        this.id = id;
-        this.name = name;
-        this.target = target;
-        this.replyTo = replyTo;
-        this.arguments = arguments;
-        this.timestamp = timestamp;
+    private String timestamp;
+
+    CommandBuilder() {
+
+    }
+
+    public String getCommandNumber() {
+        return commandNumber;
+    }
+
+    public CommandBuilder setCommandNumber(String commandNumber) {
+        this.commandNumber = commandNumber;
+        return this;
     }
 
     public String getId() {
         return id;
     }
 
-    public String getReplyTo() {
-        return replyTo;
+    public CommandBuilder setId(String id) {
+        this.id = id;
+        return this;
     }
 
     public String getName() {
         return name;
     }
 
+    public CommandBuilder setName(String name) {
+        this.name = name;
+        return this;
+    }
+
     public String getTarget() {
         return target;
+    }
+
+    public CommandBuilder setTarget(String target) {
+        this.target = target;
+        return this;
+    }
+
+    public String getReplyTo() {
+        return replyTo;
+    }
+
+    public CommandBuilder setReplyTo(String replyTo) {
+        this.replyTo = replyTo;
+        return this;
     }
 
     public String getArguments() {
         return arguments;
     }
 
+    public CommandBuilder setArguments(String arguments) {
+        this.arguments = arguments;
+        return this;
+    }
+
     public String getTimestamp() {
         return timestamp;
+    }
+
+    public CommandBuilder setTimestamp(String timestamp) {
+        this.timestamp = timestamp;
+        return this;
+    }
+
+    public Command build() {
+        return new Command(this.id, this.name, this.target, this.replyTo, this.arguments, this.timestamp);
     }
 
     @Override

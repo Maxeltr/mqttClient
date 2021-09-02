@@ -26,9 +26,9 @@ function disconnect() {
     console.log("Disconnected");
 }
 
-function createCommand(name) {
-    stompClient.send("/app/createCommand", {}, JSON.stringify({'name': name}));
-    console.log('create command: ' + name);
+function createCommand(commandNumber) {
+    stompClient.send("/app/createCommand", {}, JSON.stringify({'commandNumber': commandNumber}));
+    console.log('create command: ' + commandNumber);
 }
 
 function showReplies(message) {
@@ -56,7 +56,7 @@ $(function () {
         disconnect();
     });
     $("#takeScreenshot").click(function () {
-        createCommand('takeScreenshot');
+        createCommand('command1');
     });
 
 

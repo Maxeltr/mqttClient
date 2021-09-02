@@ -71,11 +71,11 @@ public class MessageDispatcher {
             System.out.println(String.format("JsonIOException was thrown. Reply was not sent."));
             return;
         }
-        logger.log(Level.INFO, String.format("Reply %s was sent. id=%s, timestamp=%s, result=%s.",
-                reply.getName(), reply.getCommandId(), reply.getTimestamp(), reply.getResult()
+        logger.log(Level.INFO, String.format("Reply %s was sent to topic %s with Qos %s. id=%s, timestamp=%s, result=%s.",
+                reply.getName(), topic, Qos, reply.getCommandId(), reply.getTimestamp(), reply.getResult()
         ));
-        System.out.println(String.format("Reply %s was sent. id=%s, timestamp=%s, result=%s.",
-                reply.getName(), reply.getCommandId(), reply.getTimestamp(), reply.getResult()
+        System.out.println(String.format("Reply %s was sent to topic %s with Qos %s. id=%s, timestamp=%s, result=%s.",
+                reply.getName(), topic, Qos, reply.getCommandId(), reply.getTimestamp(), reply.getResult()
         ));
     }
 
@@ -89,11 +89,11 @@ public class MessageDispatcher {
             System.out.println(String.format("JsonIOException was thrown. Command was not sent."));
             return;
         }
-        logger.log(Level.INFO, String.format("Command %s was sent. id=%s, target=%s, replyTo=%s, arguments=%s, timestamp=%s.",
-                command.getName(), command.getId(), command.getTarget(), command.getReplyTo(), command.getArguments(), command.getTimestamp()
+        logger.log(Level.INFO, String.format("Command %s was sent to topic %s with Qos %s. id=%s, target=%s, replyTo=%s, arguments=%s, timestamp=%s.",
+                command.getName(), topic, Qos, command.getId(), command.getTarget(), command.getReplyTo(), command.getArguments(), command.getTimestamp()
         ));
-        System.out.println(String.format("Command %s was sent. id=%s, target=%s, replyTo=%s, arguments=%s, timestamp=%s.",
-                command.getName(), command.getId(), command.getTarget(), command.getReplyTo(), command.getArguments(), command.getTimestamp()
+        System.out.println(String.format("Command %s was sent to topic %s with Qos %s. id=%s, target=%s, replyTo=%s, arguments=%s, timestamp=%s.",
+                command.getName(), topic, Qos, command.getId(), command.getTarget(), command.getReplyTo(), command.getArguments(), command.getTimestamp()
         ));
     }
 
@@ -112,7 +112,7 @@ public class MessageDispatcher {
     }
 
     public void display(Reply reply) {
-        this.displayController.display(reply);	//add
+        this.displayController.display(reply);	
         System.out.println(String.format("|----------------------------DISPLAY------------------------|%n%s%n|-----------------------------------------------------------|",
                 reply
         ));

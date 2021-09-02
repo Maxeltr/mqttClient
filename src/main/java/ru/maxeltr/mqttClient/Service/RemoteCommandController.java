@@ -23,6 +23,8 @@
  */
 package ru.maxeltr.mqttClient.Service;
 
+import java.time.Instant;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,21 +44,36 @@ public class RemoteCommandController {
 
     private static final Logger logger = Logger.getLogger(RemoteCommandController.class.getName());
 
-    @Autowired
-    private Config config;
+    private final CommandService commandService;
+
+    private final Config config;
 
     @Autowired
     private SimpMessagingTemplate simpMessagingTemplate;
 
-    private MessageDispatcher messageDispatcher;
-
-    public void setMessageDispatcher(MessageDispatcher messageDispatcher) {
-        this.messageDispatcher = messageDispatcher;
+    public RemoteCommandController(Config config, CommandService commandService) {
+        this.config = config;
+        this.commandService = commandService;
     }
 
     @MessageMapping("/createCommand")
-    public void createCommand(Command command) {
-        logger.log(Level.INFO, String.format("Command was created. %s", command));
-        System.out.println(String.format("Command was created. %s", command));
+    public void createCommand(CommandBuilder command) {
+        String timestamp = String.valueOf(Instant.now().toEpochMilli());
+        String numberCommand = command.getCommandNumber();
+
+        command.setId(UUID.randomUUID().toString())
+                .setName(config.getProperty(numberCommand + ".Name", ""))
+                .setReplyTo(config.getProperty("receivingCommandRepliesTopic", ""))
+                .setTarget(config.getProperty(numberCommand + ".Target", ""))
+                .setArguments(config.getProperty(numberCommand + ".Arguments", ""))
+                .setTimestamp(timestamp);
+
+        logger.log(Level.INFO, String.format("CommandBuilder was created. %s", command));
+        System.out.println(String.format("CommandBuilder was created. %s", command));
+
+        this.commandService.send(
+                config.getProperty(numberCommand + ".SendTo", ""),
+                command.build()
+        );
     }
 }
