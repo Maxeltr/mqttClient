@@ -48,12 +48,13 @@ public class RemoteCommandController {
 
     private final Config config;
 
-    @Autowired
+//    @Autowired
     private SimpMessagingTemplate simpMessagingTemplate;
 
-    public RemoteCommandController(Config config, CommandService commandService) {
+    public RemoteCommandController(Config config, CommandService commandService, SimpMessagingTemplate simpMessagingTemplate) {
         this.config = config;
         this.commandService = commandService;
+        this.simpMessagingTemplate = simpMessagingTemplate;
     }
 
     @MessageMapping("/createCommand")
@@ -62,17 +63,17 @@ public class RemoteCommandController {
         String numberCommand = command.getCommandNumber();
 
         command.setId(UUID.randomUUID().toString())
-                .setName(config.getProperty(numberCommand + ".Name", ""))
+                .setName(config.getProperty("command." + numberCommand + ".Name", ""))
                 .setReplyTo(config.getProperty("receivingCommandRepliesTopic", ""))
-                .setTarget(config.getProperty(numberCommand + ".Target", ""))
-                .setArguments(config.getProperty(numberCommand + ".Arguments", ""))
+                .setTarget(config.getProperty("command." + numberCommand + ".Target", ""))
+                .setArguments(config.getProperty("command." + numberCommand + ".Arguments", ""))
                 .setTimestamp(timestamp);
 
         logger.log(Level.INFO, String.format("CommandBuilder was created. %s", command));
         System.out.println(String.format("CommandBuilder was created. %s", command));
 
         this.commandService.send(
-                config.getProperty(numberCommand + ".SendTo", ""),
+                config.getProperty("command." + numberCommand + ".SendTo", ""),
                 command.build()
         );
     }

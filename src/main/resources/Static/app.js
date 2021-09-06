@@ -7,13 +7,18 @@ function setConnected(connected) {
 }
 
 function connect() {
-    var socket = new SockJS('/gs-guide-websocket');
+    var socket = new SockJS('/mqttClientDashboard');
     stompClient = Stomp.over(socket);
     stompClient.connect({}, function (frame) {
         setConnected(true);
         console.log('Connected: ' + frame);
+//        var header = {ack: 'card'};
         stompClient.subscribe('/topic/replies', function (message) {
             showReplies(JSON.parse(message.body));
+             console.log('card: ' + message.card);
+        });
+        stompClient.subscribe('/topic/data', function (message) {
+            showMessages(JSON.parse(message.body));
         });
     });
 }
@@ -28,22 +33,28 @@ function disconnect() {
 
 function createCommand(commandNumber) {
     stompClient.send("/app/createCommand", {}, JSON.stringify({'commandNumber': commandNumber}));
-    console.log('create command: ' + commandNumber);
+//    console.log('create command: ' + commandNumber);
 }
 
 function showReplies(message) {
-    console.log('message: ' + message.name);
-    document.getElementById(message.name + '-timestamp').innerHTML = message.timestamp;
-    var image = new Image();
-    image.src = 'data:image/png;base64,' + message.payload;
-    document.getElementById(message.name + '-payload').innerHTML = '<img src="' + image.src + '" class="img-fluid" alt="...">';
-    var saveButton = document.getElementById(message.name + '-save');
-    saveButton.setAttribute('href', image.src);
-    saveButton.classList.remove("disabled");
-
+//    console.log('message: ' + message.name);
+//    console.log('card: ' + message);
+//    document.getElementById(message.name + '-timestamp').innerHTML = message.timestamp;
+//    if (message.result.toUpperCase() === 'OK') {
+//        var image = new Image();
+//        image.src = 'data:image/png;base64,' + message.payload;
+//        document.getElementById(message.name + '-payload').innerHTML = '<img src="' + image.src + '" class="img-fluid" alt="...">';
+//        var saveButton = document.getElementById(message.name + '-save');
+//        saveButton.setAttribute('href', image.src);
+//        saveButton.classList.remove("disabled");
+//    }
 }
 
+function showMessages(message, card) {
+//    console.log('message: ' + message.name);
 
+
+}
 
 $(function () {
     $("form").on('submit', function (e) {
@@ -55,8 +66,9 @@ $(function () {
     $("#disconnect").click(function () {
         disconnect();
     });
-    $("#takeScreenshot").click(function () {
-        createCommand('command1');
+    $("#sendCommand ").click(function (data) {
+        var arg = $(data).attr('data-arg');
+        createCommand('1');
     });
 
 

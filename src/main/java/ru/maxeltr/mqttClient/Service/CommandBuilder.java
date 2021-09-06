@@ -48,9 +48,13 @@ public class CommandBuilder {
 
     private String timestamp;
 
-    CommandBuilder() {
+//    CommandBuilder(String commandNumber) {
+//        this.commandNumber = commandNumber;
+//    }
 
-    }
+//    CommandBuilder(String name) {
+//        this.name = name;
+//    }
 
     public String getCommandNumber() {
         return commandNumber;
@@ -123,7 +127,7 @@ public class CommandBuilder {
     public String toString() {
         return new StringBuilder(StringUtil.simpleClassName(this))
                 .append('[')
-                .append(String.format("id=%s, name=%s, target=%s, replyTo=%s, timestamp=%s, arguments=%s", this.id, this.name, this.target, this.replyTo, this.timestamp, this.arguments))
+                .append(String.format("commandNumber=%s, id=%s, name=%s, target=%s, replyTo=%s, timestamp=%s, arguments=%s", this.commandNumber, this.id, this.name, this.target, this.replyTo, this.timestamp, this.arguments))
                 .append(']')
                 .toString();
     }

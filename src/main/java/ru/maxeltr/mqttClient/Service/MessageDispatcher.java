@@ -25,6 +25,7 @@ package ru.maxeltr.mqttClient.Service;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonIOException;
+import com.google.gson.JsonObject;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import java.nio.charset.Charset;
@@ -41,6 +42,8 @@ public class MessageDispatcher {
 
     private static final Logger logger = Logger.getLogger(MessageDispatcher.class.getName());
 
+    private Config config;
+
     private final MqttClientImpl mqttClient;
 
     private final CommandService commandService;
@@ -50,6 +53,7 @@ public class MessageDispatcher {
     private final DisplayController displayController;
 
     public MessageDispatcher(Config config, MqttClientImpl mqttClientImpl, CommandService commandService, MessageHandler messageHandler, DisplayController displayController) {
+        this.config = config;
         this.mqttClient = mqttClientImpl;
         this.commandService = commandService;
         this.messageHandler = messageHandler;
@@ -105,16 +109,12 @@ public class MessageDispatcher {
         this.commandService.execute(command);
     }
 
-    public void display(String display) {
-        System.out.println(String.format("|----------------------------DISPLAY------------------------|%n%s%n|-----------------------------------------------------------|",
-                display
-        ));
+    public void display(String topic, JsonObject data) {
+        this.displayController.display(topic, data);
     }
 
     public void display(Reply reply) {
-        this.displayController.display(reply);	
-        System.out.println(String.format("|----------------------------DISPLAY------------------------|%n%s%n|-----------------------------------------------------------|",
-                reply
-        ));
+        this.displayController.display(reply);
+        
     }
 }

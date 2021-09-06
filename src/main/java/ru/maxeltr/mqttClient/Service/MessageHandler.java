@@ -25,6 +25,7 @@ package ru.maxeltr.mqttClient.Service;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
 import io.netty.handler.codec.mqtt.MqttPublishMessage;
 import io.netty.handler.codec.mqtt.MqttPublishVariableHeader;
@@ -108,8 +109,17 @@ public class MessageHandler {
             }
 
         } else {
-            System.out.println(payload);
-            ReferenceCountUtil.release(message);
+            try {
+                JsonObject data = gson.fromJson(payload, JsonObject.class);
+                logger.log(Level.INFO, String.format("Message was received. %s.", data));
+                System.out.println(String.format("Message was received. %s.", data));
+                this.messageDispatcher.display(topic, data);
+            } catch (JsonSyntaxException | NullPointerException ex) {
+                logger.log(Level.SEVERE, "Malformed Json or empty message payload.", ex);
+                System.out.println(String.format("Malformed Json or empty message payload."));
+            } finally {
+                ReferenceCountUtil.release(message);
+            }
         }
 
     }

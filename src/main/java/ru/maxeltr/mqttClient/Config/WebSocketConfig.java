@@ -45,13 +45,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer, WebSer
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        config.enableSimpleBroker(this.config.getProperty("destinationBrokerPrefix", ""));
-        config.setApplicationDestinationPrefixes(this.config.getProperty("destinationApplicationPrefix", ""));
+        config.enableSimpleBroker("/topic");
+        config.setApplicationDestinationPrefixes("/app");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/gs-guide-websocket").withSockJS();
+        registry.addEndpoint("/mqttClientDashboard").withSockJS();
     }
 
     @Override
