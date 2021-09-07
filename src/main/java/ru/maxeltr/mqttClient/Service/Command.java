@@ -46,7 +46,7 @@ public class Command {
 
     private final String timestamp;
 
-    public Command(String id, String name, String target, String replyTo, String arguments, String timestamp) {	//add
+    public Command(String id, String name, String target, String replyTo, String arguments, String timestamp) {
         this.id = id;
         this.name = name;
         this.target = target;

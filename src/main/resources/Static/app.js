@@ -12,13 +12,11 @@ function connect() {
     stompClient.connect({}, function (frame) {
         setConnected(true);
         console.log('Connected: ' + frame);
-//        var header = {ack: 'card'};
         stompClient.subscribe('/topic/replies', function (message) {
-            showReplies(JSON.parse(message.body));
-             console.log('card: ' + message.card);
+            showReplies(JSON.parse(message.body), message.headers.card);
         });
         stompClient.subscribe('/topic/data', function (message) {
-            showMessages(JSON.parse(message.body));
+            showMessages(JSON.parse(message.body), message.headers.card);
         });
     });
 }
@@ -33,21 +31,18 @@ function disconnect() {
 
 function createCommand(commandNumber) {
     stompClient.send("/app/createCommand", {}, JSON.stringify({'commandNumber': commandNumber}));
-//    console.log('create command: ' + commandNumber);
 }
 
-function showReplies(message) {
-//    console.log('message: ' + message.name);
-//    console.log('card: ' + message);
-//    document.getElementById(message.name + '-timestamp').innerHTML = message.timestamp;
-//    if (message.result.toUpperCase() === 'OK') {
-//        var image = new Image();
-//        image.src = 'data:image/png;base64,' + message.payload;
-//        document.getElementById(message.name + '-payload').innerHTML = '<img src="' + image.src + '" class="img-fluid" alt="...">';
-//        var saveButton = document.getElementById(message.name + '-save');
-//        saveButton.setAttribute('href', image.src);
-//        saveButton.classList.remove("disabled");
-//    }
+function showReplies(message, card) {
+    document.getElementById(card + '-timestamp').innerHTML = message.timestamp;
+    if (message.result.toUpperCase() === 'OK') {
+        var image = new Image();
+        image.src = 'data:image/png;base64,' + message.payload;
+        document.getElementById(card + '-payload').innerHTML = '<img src="' + image.src + '" class="img-fluid" alt="...">';
+        var saveButton = document.getElementById(card + '-save');
+        saveButton.setAttribute('href', image.src);
+        saveButton.classList.remove("disabled");
+    }
 }
 
 function showMessages(message, card) {

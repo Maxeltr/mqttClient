@@ -76,7 +76,7 @@ public class Reply {
     public String toString() {
         return new StringBuilder(StringUtil.simpleClassName(this))
                 .append('[')
-                .append(String.format("commandId=%s, name=%s, result=%s, timestamp=%s, payload=%s", this.commandId, this.name, this.result, this.timestamp, this.payload))
+                .append(String.format("commandId=%s, name=%s, result=%s, timestamp=%s, payload=%s [length=%s]", this.commandId, this.name, this.result, this.timestamp, this.payload.substring(0, Math.min(this.payload.length(), 64)), this.payload.length()))
                 .append(']')
                 .toString();
     }

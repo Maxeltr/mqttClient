@@ -31,14 +31,30 @@ public class DisplayController {
 
     //@SendTo("/topic/screenshots")
     public void display(Reply reply) {
-        simpMessagingTemplate.convertAndSend("/topic/replies", reply, Map.of("card", config.getProperty(reply.getName() + ".Display", "")));
-        logger.log(Level.INFO, String.format("Reply %s was displayed. id=%s, timestamp=%s, result=%s.", reply.getName(), reply.getCommandId(), reply.getTimestamp(), reply.getResult()));
-        System.out.println(String.format("Reply %s was displayed. id=%s, timestamp=%s, result=%s.", reply.getName(), reply.getCommandId(), reply.getTimestamp(), reply.getResult()));
+        String card = config.getProperty(reply.getName() + ".Display", "");
+        if (card.trim().isEmpty()) {
+            logger.log(Level.WARNING, String.format("Invalid %s.Display property.", reply.getName()));
+            System.out.println(String.format("Invalid %s.Display property.", reply.getName()));
+            return;
+        }
+
+        simpMessagingTemplate.convertAndSend("/topic/replies", reply, Map.of("card", card));
+
+        logger.log(Level.INFO, String.format("Reply %s was sent to display %s. id=%s, timestamp=%s, result=%s.", reply.getName(), card, reply.getCommandId(), reply.getTimestamp(), reply.getResult()));
+        System.out.println(String.format("Reply %s was sent to display %s. id=%s, timestamp=%s, result=%s.", reply.getName(), card, reply.getCommandId(), reply.getTimestamp(), reply.getResult()));
     }
 
     public void display(String topic, JsonObject data) {
-        simpMessagingTemplate.convertAndSend("/topic/data", data, Map.of("card", config.getProperty(topic + ".Display", "")));
-        logger.log(Level.INFO, String.format("Message was displayed. %s", data));
-        System.out.println(String.format("Message was displayed. %s", data));
+        String card = config.getProperty(topic + ".Display", "");
+        if (card.trim().isEmpty()) {
+            logger.log(Level.WARNING, String.format("Invalid %s.Display property.", topic));
+            System.out.println(String.format("Invalid %s.Display property.", topic));
+            return;
+        }
+
+        simpMessagingTemplate.convertAndSend("/topic/data", data, Map.of("card", card));
+
+        logger.log(Level.INFO, String.format("Message was sent to display %s. %s", card, data));
+        System.out.println(String.format("Message was sent to display %s. %s", card, data));
     }
 }

@@ -94,7 +94,7 @@ public class CommandService {
         HashMap<String, String> isValid = this.validate(command);
         if (!Boolean.parseBoolean(isValid.get("isValid"))) {
             if (replyTopic != null && !replyTopic.trim().isEmpty()) {
-                this.send(replyTopic, new Reply(command.getId(), command.getName(), timestamp, "Command not allowed.", "fail"));
+                this.send(replyTopic, new Reply(command.getId(), command.getName(), timestamp, isValid.get("message"), "fail"));
             }
             logger.log(Level.INFO, String.format(
                     "Command has invalid format. %s",
@@ -108,7 +108,7 @@ public class CommandService {
         }
 
         if (!this.allowedCommands.contains(command.getName())) {
-            this.send(replyTopic, new Reply(command.getId(), command.getName(), timestamp, isValid.get("message"), "fail"));
+            this.send(replyTopic, new Reply(command.getId(), command.getName(), timestamp, "The command is not allowed.", "fail"));
             logger.log(Level.INFO, String.format("Command not allowed name=%s, id=%s.", command.getName(), command.getId()));
             System.out.println(String.format("Command not allowed name=%s, id=%s.", command.getName(), command.getId()));
 
@@ -128,14 +128,26 @@ public class CommandService {
 
     @Async
     public void send(String topic, Reply reply) {
+        if (topic.trim().isEmpty()) {
+            logger.log(Level.WARNING, String.format("Topic is empty for reply %s.", reply.getName()));
+            System.out.println(String.format("Topic is empty for reply %s.", reply.getName()));
+            return;
+        }
+
         this.messageDispatcher.send(topic, this.commandQos, reply);
 
-        logger.log(Level.INFO, String.format("Reply was sent. %s", reply));
-        System.out.println(String.format("Reply was sent. %s", reply));
+        logger.log(Level.INFO, String.format("Reply was sent. Name=%s, CommandId=%s, Timestamp=%s, Result=%s.", reply.getName(), reply.getCommandId(), reply.getTimestamp(), reply.getResult()));
+        System.out.println(String.format("Reply was sent. Name=%s, CommandId=%s, Timestamp=%s, Result=%s.", reply.getName(), reply.getCommandId(), reply.getTimestamp(), reply.getResult()));
     }
 
     @Async
     public void send(String topic, Command command) {
+        if (topic.trim().isEmpty()) {
+            logger.log(Level.WARNING, String.format("Topic is empty for command %s.", command));
+            System.out.println(String.format("Topic is empty for command %s.", command));
+            return;
+        }
+
         this.messageDispatcher.send(topic, this.commandQos, command);
 
         logger.log(Level.INFO, String.format("Command was sent. %s", command));
@@ -144,6 +156,8 @@ public class CommandService {
 
     @Async
     public void handleReply(Reply reply) {
+        logger.log(Level.INFO, String.format("CommandService. Start handle reply name=%s, id=%s.", reply.getName(), reply.getCommandId()));
+        System.out.println(String.format("CommandService. Start handle reply name=%s, id=%s.", reply.getName(), reply.getCommandId()));
 
         File file = new File("c:\\java\\mqttClient\\test.jpg");
         try (FileOutputStream fileOutputStream = new FileOutputStream(file)) {
@@ -153,6 +167,9 @@ public class CommandService {
         }
 
         this.messageDispatcher.display(reply);
+
+        logger.log(Level.INFO, String.format("CommandService. End handle reply name=%s, id=%s.", reply.getName(), reply.getCommandId()));
+        System.out.println(String.format("CommandService. End handle reply name=%s, id=%s.", reply.getName(), reply.getCommandId()));
     }
 
     private String launch(Command command, String arguments) {

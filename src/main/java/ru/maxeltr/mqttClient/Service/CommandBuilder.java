@@ -51,11 +51,9 @@ public class CommandBuilder {
 //    CommandBuilder(String commandNumber) {
 //        this.commandNumber = commandNumber;
 //    }
-
 //    CommandBuilder(String name) {
 //        this.name = name;
 //    }
-
     public String getCommandNumber() {
         return commandNumber;
     }
@@ -120,6 +118,19 @@ public class CommandBuilder {
     }
 
     public Command build() {
+        if (this.id == null || this.id.trim().isEmpty()) {
+            throw new IllegalStateException("Invalid id property");
+        }
+        if (this.name == null || this.name.trim().isEmpty()) {
+            throw new IllegalStateException("Invalid name property");
+        }
+        if (this.replyTo == null || this.replyTo.trim().isEmpty()) {
+            throw new IllegalStateException("Invalid replyTo property");
+        }
+        if (this.timestamp == null || this.timestamp.trim().isEmpty()) {
+            throw new IllegalStateException("Invalid timestamp property");
+        }
+
         return new Command(this.id, this.name, this.target, this.replyTo, this.arguments, this.timestamp);
     }
 

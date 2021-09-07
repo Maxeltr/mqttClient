@@ -66,6 +66,12 @@ public class MessageDispatcher {
     }
 
     public void send(String topic, String Qos, Reply reply) {
+        if (topic.trim().isEmpty() || Qos.trim().isEmpty()) {
+            logger.log(Level.WARNING, String.format("Topic or Qos is empty for reply %s.", reply.getName()));
+            System.out.println(String.format("Topic or Qos is empty for reply %s.", reply.getName()));
+            return;
+        }
+
         Gson gson = new Gson();
         try {
             String jsonReply = gson.toJson(reply);
@@ -84,6 +90,12 @@ public class MessageDispatcher {
     }
 
     public void send(String topic, String Qos, Command command) {
+        if (topic.trim().isEmpty() || Qos.trim().isEmpty()) {
+            logger.log(Level.WARNING, String.format("Topic or Qos is empty for command %s.", command));
+            System.out.println(String.format("Topic or Qos is empty for command %s.", command));
+            return;
+        }
+
         Gson gson = new Gson();
         try {
             String jsonCommand = gson.toJson(command);
@@ -110,11 +122,17 @@ public class MessageDispatcher {
     }
 
     public void display(String topic, JsonObject data) {
+        if (topic.trim().isEmpty()) {
+            logger.log(Level.WARNING, String.format("Topic is empty for JsonObject %s.", data));
+            System.out.println(String.format("Topic is empty for JsonObject %s.", data));
+            return;
+        }
+
         this.displayController.display(topic, data);
     }
 
     public void display(Reply reply) {
         this.displayController.display(reply);
-        
+
     }
 }

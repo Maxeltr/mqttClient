@@ -61,6 +61,10 @@ public class RemoteCommandController {
     public void createCommand(CommandBuilder command) {
         String timestamp = String.valueOf(Instant.now().toEpochMilli());
         String numberCommand = command.getCommandNumber();
+        String sendTo = config.getProperty("command." + numberCommand + ".SendTo", "");
+        if (sendTo.trim().isEmpty()) {
+            throw new IllegalStateException(String.format("Invalid command.%s.SendTo property.", numberCommand));
+        }
 
         command.setId(UUID.randomUUID().toString())
                 .setName(config.getProperty("command." + numberCommand + ".Name", ""))
@@ -73,7 +77,7 @@ public class RemoteCommandController {
         System.out.println(String.format("CommandBuilder was created. %s", command));
 
         this.commandService.send(
-                config.getProperty("command." + numberCommand + ".SendTo", ""),
+                sendTo,
                 command.build()
         );
     }
