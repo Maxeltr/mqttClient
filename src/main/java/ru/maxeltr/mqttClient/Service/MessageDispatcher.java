@@ -113,6 +113,31 @@ public class MessageDispatcher {
         ));
     }
 
+    public void send(String topic, String Qos, JsonObject jsonObject, Boolean retain) {
+        if (topic.trim().isEmpty() || Qos.trim().isEmpty()) {
+            logger.log(Level.WARNING, String.format("Topic or Qos is empty for %s.", jsonObject));
+            System.out.println(String.format("Topic or Qos is empty for %s.", jsonObject));
+            return;
+        }
+
+        String json;
+        Gson gson = new Gson();
+        try {
+            json = gson.toJson(jsonObject);
+            this.mqttClient.publish(topic, Unpooled.wrappedBuffer(json.getBytes(Charset.forName("UTF-8"))), MqttQoS.valueOf(Qos), retain);
+        } catch (JsonIOException ex) {
+            logger.log(Level.SEVERE, "JsonIOException was thrown. Data was not sent.", ex);
+            System.out.println(String.format("JsonIOException was thrown. Data was not sent."));
+            return;
+        }
+        logger.log(Level.INFO, String.format("Data was sent to topic %s with Qos %s, retain=%s. Data=%s, length=%s.",
+                topic, Qos, retain, json.substring(0, Math.min(json.length(), 64)), json.length()
+        ));
+        System.out.println(String.format("Data was sent to topic %s with Qos %s, retain=%s. Data=%s, length=%s.",
+                topic, Qos, retain, json.substring(0, Math.min(json.length(), 64)), json.length()
+        ));
+    }
+
     public void handleReply(Reply reply) {
         this.commandService.handleReply(reply);
     }

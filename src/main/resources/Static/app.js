@@ -42,7 +42,9 @@ function showReplies(message, card) {
         var saveButton = document.getElementById(card + '-save');
         saveButton.setAttribute('href', image.src);
         saveButton.classList.remove("disabled");
-    }
+    } else {	
+		document.getElementById(card + '-payload').innerHTML = '<p>' + message.result + '<br>' + message.payload + '</p>';
+	}
 }
 
 function showMessages(message, card) {
