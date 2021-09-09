@@ -22,22 +22,13 @@ public class MqttClientApplication {
     public static void main(String[] args) throws InterruptedException, ExecutionException {
 
         ConfigurableApplicationContext applicationContext = SpringApplication.run(MqttClientApplication.class, args);
-        MqttClientImpl mqttClientImpl = (MqttClientImpl) applicationContext.getBean("mqttClientImpl");
-        Config config = (Config) applicationContext.getBean("config");
+//        MqttClientImpl mqttClientImpl = (MqttClientImpl) applicationContext.getBean("mqttClientImpl");
+//        Config config = (Config) applicationContext.getBean("config");
 //        Promise<MqttConnAckMessage> connectResult = mqttClientImpl.connect("test.mosquitto.org", 1883);
-        Promise<MqttConnAckMessage> connectResult = mqttClientImpl.connect(config.getProperty("host", ""), 1883);
+//        Promise<MqttConnAckMessage> connectResult = mqttClientImpl.connect(config.getProperty("host", ""), 1883);
 
-        System.out.println("main " + connectResult.get().variableHeader().connectReturnCode());
+//        System.out.println("main " + connectResult.get().variableHeader().connectReturnCode());
 
-        String location = config.getProperty("location", "");
-        if (location.trim().isEmpty()) {
-            throw new IllegalStateException("Invalid location property");
-        }
-
-        String clientId = config.getProperty("clientId", "");
-        if (location.trim().isEmpty()) {
-            throw new IllegalStateException("Invalid clientId property");
-        }
 
 //        String commandTopic = config.getProperty("receivingCommandsTopic", "");
 //        if (commandTopic.trim().isEmpty()) {
@@ -99,16 +90,16 @@ public class MqttClientApplication {
 //
 //        Promise<MqttSubAckMessage> subResult = mqttClientImpl.subscribe(subTopics);
 
-        Promise<MqttSubAckMessage> subResult = mqttClientImpl.subscribeFromConfig();
+//        Promise<MqttSubAckMessage> subResult = mqttClientImpl.subscribeFromConfig();
 
 //
 //        MqttSubAckMessage res = subResult.get();
 //        System.out.println(String.format("main " + "MqttSubscriptionResult %s.%n", res.variableHeader().messageId()));
-        Thread.sleep(7000);
+//        Thread.sleep(7000);
 //        String com = "{" + "\"id\"" + ":4," + "\"name\"" + ":" + "\"takeScreenshot\"" + "}";
-        String com = "{" + "\"id\"" + ":4," + "\"name\"" + ":" + "\"takeScreenshot\"," + "\"replyTo\"" + ":" + "\"hm/dsktpClient/cmd/replies\"" + "}";
+//        String com = "{" + "\"id\"" + ":4," + "\"name\"" + ":" + "\"takeScreenshot\"," + "\"replyTo\"" + ":" + "\"hm/dsktpClient/cmd/replies\"" + "}";
 //        mqttClientImpl.publish("hm/dsktpClient/cmd", Unpooled.wrappedBuffer(com.getBytes(Charset.forName("UTF-8"))), MqttQoS.EXACTLY_ONCE, false);
-        Thread.sleep(2000);
+//        Thread.sleep(2000);
 //        for( IntObjectMap.PrimitiveEntry<MqttSubscribeMessage> v: mqttClientImpl.waitingSubscriptions.entries()) {
 //            System.out.println(String.format("method main. waitingSubscriptions. key %s value %s", v.key(), v.value()));
 //        }
@@ -123,7 +114,7 @@ public class MqttClientApplication {
 //        mqttClientImpl.reconnect();
 
 //        mqttClientImpl.shutdown();
-        System.out.println(String.format("End.%n"));
+//        System.out.println(String.format("End.%n"));
     }
 
 
