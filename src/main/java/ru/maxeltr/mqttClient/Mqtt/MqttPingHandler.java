@@ -55,6 +55,8 @@ public class MqttPingHandler extends ChannelInboundHandlerAdapter {
 
     public MqttPingHandler(Config config) {
         this.config = config;
+        logger.log(Level.FINE, String.format("Create ping handler: %s", this));
+        System.out.println(String.format("Create ping  handler: %s", this));
     }
 
     @Override

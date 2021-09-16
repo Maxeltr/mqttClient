@@ -31,6 +31,8 @@ import java.io.IOException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.LogManager;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
@@ -111,14 +113,29 @@ public class AppAnnotationConfig {
      * For scheduling a ping request with a fixed delay which is defined by config (MqttPingScheduleHandler)
      */
     @Bean
-    public PeriodicTrigger periodicTrigger(Config config) {
-        String keepAliveTimer = config.getProperty("keepAliveTimer", "");
+    public PeriodicTrigger pingPeriodicTrigger(Config config) {
+        String keepAliveTimer = config.getProperty("keepAliveTimer", "20");
         if (keepAliveTimer.trim().isEmpty()) {
             throw new IllegalStateException("Invalid keepAliveTimer property");
         }
         PeriodicTrigger periodicTrigger = new PeriodicTrigger(Long.parseLong(keepAliveTimer, 10), TimeUnit.SECONDS);
         periodicTrigger.setFixedRate(true);
         periodicTrigger.setInitialDelay(Long.parseLong(keepAliveTimer, 10));
+        return periodicTrigger;
+    }
+
+    /*
+     * For scheduling retransmit MqttMessages with a fixed delay which is defined by config
+     */
+    @Bean
+    public PeriodicTrigger retransmitPeriodicTrigger(Config config) {
+        String retransmitMqttMessageTimer = config.getProperty("retransmitMqttMessageTimer", "40");
+        if (retransmitMqttMessageTimer.trim().isEmpty()) {
+            throw new IllegalStateException("Invalid retransmitMqttMessageTimer property");
+        }
+        PeriodicTrigger periodicTrigger = new PeriodicTrigger(Long.parseLong(retransmitMqttMessageTimer, 10), TimeUnit.SECONDS);
+        periodicTrigger.setFixedRate(true);
+        periodicTrigger.setInitialDelay(Long.parseLong(retransmitMqttMessageTimer, 10));
         return periodicTrigger;
     }
 
@@ -132,73 +149,118 @@ public class AppAnnotationConfig {
         return new PromiseBroker();
     }
 
-    @Bean
-    @Scope("prototype")
-    public MqttDecoder mqttDecoder(Config config) {
-        int maxBytesInMessage = Integer.parseInt(config.getProperty("maxBytesInMessage", "8092"));
-        return new MqttDecoder(maxBytesInMessage);
-    }
-
-    @Bean
-    public MqttEncoder mqttEncoder() {
-        return MqttEncoder.INSTANCE;
-    }
-
-    @Bean
-    @Scope("prototype")
-    public IdleStateHandler idleStateHandler(Config config) {
-        int keepAliveTimer = Integer.parseInt(config.getProperty("keepAliveTimer", "20"));
-        return new IdleStateHandler(0, keepAliveTimer, 0, TimeUnit.SECONDS);
-    }
-
-    @Bean
-    @Scope("prototype")
-    public ChannelHandler mqttPingHandler(Config config, ThreadPoolTaskScheduler threadPoolTaskScheduler) {
-        return new MqttPingScheduleHandler(config, threadPoolTaskScheduler);   //MqttPingHandler(config);
-    }
-
-    @Bean
-    @Scope("prototype")
-    public MqttPublishHandler mqttPublishHandler(PromiseBroker promiseBroker, @Lazy MessageHandler messageHandler, Config config) {
-        return new MqttPublishHandler(promiseBroker, messageHandler, config);
-    }
-
-    @Bean
-    @Scope("prototype")
-    public MqttConnectHandler mqttConnectHandler(PromiseBroker promiseBroker, Config config) {
-        return new MqttConnectHandler(promiseBroker, config);
-    }
-
-    @Bean
-    @Scope("prototype")
-    public MqttSubscriptionHandler mqttSubscriptionHandler(PromiseBroker promiseBroker, Config config) {
-        return new MqttSubscriptionHandler(promiseBroker, config);
-    }
-
-    @Bean
-    @Scope("prototype")
-    public MqttExceptionHandler exceptionHandler() {
-        return new MqttExceptionHandler();
-    }
-
+//    @Bean
+//    @Scope("prototype")
+//    public MqttDecoder mqttDecoder(Config config) {
+//        int maxBytesInMessage = Integer.parseInt(config.getProperty("maxBytesInMessage", "8092"));
+//        return new MqttDecoder(maxBytesInMessage);
+//    }
+//
+//    @Bean
+//    public MqttEncoder mqttEncoder() {
+//        return MqttEncoder.INSTANCE;
+//    }
+//
+//    @Bean
+//    @Scope("prototype")
+//    public IdleStateHandler idleStateHandler(Config config) {
+//        int keepAliveTimer = Integer.parseInt(config.getProperty("keepAliveTimer", "20"));
+//        return new IdleStateHandler(0, keepAliveTimer, 0, TimeUnit.SECONDS);
+//    }
+//
+//    @Bean
+//    @Scope("prototype")
+//    public ChannelHandler mqttPingHandler(Config config, ThreadPoolTaskScheduler threadPoolTaskScheduler) {
+//        return new MqttPingScheduleHandler(config, threadPoolTaskScheduler);   //MqttPingHandler(config);
+//    }
+//
+//    @Bean
+//    @Scope("prototype")
+//    public MqttPublishHandler mqttPublishHandler(PromiseBroker promiseBroker, MessageHandler messageHandler, Config config, ThreadPoolTaskScheduler threadPoolTaskScheduler, PeriodicTrigger retransmitPeriodicTrigger, ApplicationEventPublisher applicationEventPublisher) {
+//        return new MqttPublishHandler(promiseBroker, messageHandler, config, threadPoolTaskScheduler, retransmitPeriodicTrigger, applicationEventPublisher);
+//    }
+//
+//    @Bean
+//    @Scope("prototype")
+//    public MqttConnectHandler mqttConnectHandler(PromiseBroker promiseBroker, Config config) {
+//        return new MqttConnectHandler(promiseBroker, config);
+//    }
+//
+//    @Bean
+//    @Scope("prototype")
+//    public MqttSubscriptionHandler mqttSubscriptionHandler(PromiseBroker promiseBroker, Config config) {
+//        return new MqttSubscriptionHandler(promiseBroker, config);
+//    }
+//
+//    @Bean
+//    @Scope("prototype")
+//    public MqttExceptionHandler exceptionHandler() {
+//        return new MqttExceptionHandler();
+//    }
     @Bean
     @Scope("prototype")
     public MqttChannelInitializer mqttChannelInitializer(
-            MqttDecoder mqttDecoder,
-            MqttEncoder mqttEncoder,
-            ChannelHandler idleStateHandler,
-            ChannelHandler mqttPingHandler,
-            ChannelHandler mqttConnectHandler,
-            ChannelHandler mqttSubscriptionHandler,
-            ChannelHandler mqttPublishHandler,
-            ChannelHandler exceptionHandler
+            //            MqttDecoder mqttDecoder,
+            //            MqttEncoder mqttEncoder,
+            //            ChannelHandler idleStateHandler,
+            //            ChannelHandler mqttPingHandler,
+            //            ChannelHandler mqttConnectHandler,
+            //            ChannelHandler mqttSubscriptionHandler,
+            //            ChannelHandler mqttPublishHandler,
+            //            ChannelHandler exceptionHandler
+            Config config,
+            PromiseBroker promiseBroker,
+            MessageHandler messageHandler,
+            ThreadPoolTaskScheduler threadPoolTaskScheduler,
+            PeriodicTrigger retransmitPeriodicTrigger,
+            ApplicationEventPublisher applicationEventPublisher,
+            ApplicationContext appContext,
+            PeriodicTrigger pingPeriodicTrigger
     ) {
-        return new MqttChannelInitializer(mqttDecoder, mqttEncoder, idleStateHandler, mqttPingHandler, mqttConnectHandler, mqttSubscriptionHandler, mqttPublishHandler, exceptionHandler);
+        return new MqttChannelInitializer(
+                //                mqttDecoder, mqttEncoder, idleStateHandler, mqttPingHandler, mqttConnectHandler, mqttSubscriptionHandler, mqttPublishHandler, exceptionHandler
+                config,
+                promiseBroker,
+                messageHandler,
+                threadPoolTaskScheduler,
+                retransmitPeriodicTrigger,
+                applicationEventPublisher,
+                pingPeriodicTrigger
+        );
     }
 
+//    @Bean
+//    @Scope("prototype")
+//    public MqttChannelInitializer mqttChannelInitializer(Config config, PromiseBroker promiseBroker, MessageHandler messageHandler, ThreadPoolTaskScheduler threadPoolTaskScheduler, PeriodicTrigger retransmitPeriodicTrigger) {
+//        int maxBytesInMessage = Integer.parseInt(config.getProperty("maxBytesInMessage", "8092"));
+//        MqttDecoder mqttDecoder = new MqttDecoder(maxBytesInMessage);
+//
+//        int keepAliveTimer = Integer.parseInt(config.getProperty("keepAliveTimer", "20"));
+//        IdleStateHandler idleStateHandler = new IdleStateHandler(0, keepAliveTimer, 0, TimeUnit.SECONDS);
+//        MqttPingScheduleHandler mqttPingScheduleHandler = new MqttPingScheduleHandler(config, threadPoolTaskScheduler);
+//        MqttPublishHandler mqttPublishHandler = new MqttPublishHandler(promiseBroker, messageHandler, config, threadPoolTaskScheduler, retransmitPeriodicTrigger);
+//        MqttConnectHandler mqttConnectHandler = new MqttConnectHandler(promiseBroker, config);
+//        MqttSubscriptionHandler mqttSubscriptionHandler = new MqttSubscriptionHandler(promiseBroker, config);
+//        MqttExceptionHandler mqttExceptionHandler = new MqttExceptionHandler();
+//        return new MqttChannelInitializer(mqttDecoder, MqttEncoder.INSTANCE, idleStateHandler, mqttPingScheduleHandler, mqttConnectHandler, mqttSubscriptionHandler, mqttPublishHandler, mqttExceptionHandler);
+//    }
     @Bean
-    public MqttClientImpl mqttClientImpl(Config config, PromiseBroker promiseBroker) {
-        return new MqttClientImpl(config, promiseBroker);
+    public MqttClientImpl mqttClientImpl(
+            Config config,
+            PromiseBroker promiseBroker,
+            ThreadPoolTaskScheduler threadPoolTaskScheduler,
+            PeriodicTrigger retransmitPeriodicTrigger,
+            MqttChannelInitializer mqttChannelInitializer,
+            ApplicationEventPublisher applicationEventPublisher
+    ) {
+        return new MqttClientImpl(
+                config,
+                promiseBroker,
+                threadPoolTaskScheduler,
+                retransmitPeriodicTrigger,
+                mqttChannelInitializer,
+                applicationEventPublisher
+        );
     }
 
     @Bean
@@ -221,7 +283,6 @@ public class AppAnnotationConfig {
 //    public RemoteCommandController remoteCommandController(Config config, CommandService commandService) {
 //        return new RemoteCommandController(config, commandService);
 //    }
-
     /**
      * For creating Asynchronous Events
      *

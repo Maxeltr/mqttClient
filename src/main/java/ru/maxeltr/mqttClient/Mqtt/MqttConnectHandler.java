@@ -59,12 +59,15 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
 
     private final PromiseBroker promiseBroker;
 
-    @Autowired
+//    @Autowired
     private ApplicationEventPublisher applicationEventPublisher;
 
-    public MqttConnectHandler(PromiseBroker promiseBroker, Config config) {
+    public MqttConnectHandler(PromiseBroker promiseBroker, Config config, ApplicationEventPublisher applicationEventPublisher) {
         this.promiseBroker = promiseBroker;
         this.config = config;
+        this.applicationEventPublisher = applicationEventPublisher;
+        logger.log(Level.FINE, String.format("Create connect handler: %s", this));
+        System.out.println(String.format("Create connect handler: %s", this));
     }
 
     @Override

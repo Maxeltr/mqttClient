@@ -56,7 +56,7 @@ public class MqttPingScheduleHandler extends ChannelInboundHandlerAdapter {
 //    @Autowired
     private ThreadPoolTaskScheduler taskScheduler;
 
-    @Autowired
+//    @Autowired
     private PeriodicTrigger periodicTrigger;
 
     private boolean pingRequestWasSent;
@@ -65,9 +65,12 @@ public class MqttPingScheduleHandler extends ChannelInboundHandlerAdapter {
 
     private ScheduledFuture<?> future;
 
-    public MqttPingScheduleHandler(Config config, ThreadPoolTaskScheduler taskScheduler) {
+    public MqttPingScheduleHandler(Config config, ThreadPoolTaskScheduler taskScheduler, PeriodicTrigger periodicTrigger) {
         this.config = config;
         this.taskScheduler = taskScheduler;
+        this.periodicTrigger = periodicTrigger;
+        logger.log(Level.FINE, String.format("Create ping handler: %s", this));
+        System.out.println(String.format("Create ping handler: %s", this));
     }
 
     @PostConstruct

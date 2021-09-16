@@ -43,9 +43,6 @@ public class MqttExceptionHandler extends ChannelDuplexHandler {
 
     private static final Logger logger = Logger.getLogger(MqttExceptionHandler.class.getName());
 
-    @Autowired
-    private ApplicationEventPublisher applicationEventPublisher;
-
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         // Uncaught exceptions from inbound handlers will propagate up to this handler
@@ -75,5 +72,5 @@ public class MqttExceptionHandler extends ChannelDuplexHandler {
         }));
     }
 
-    
+
 }

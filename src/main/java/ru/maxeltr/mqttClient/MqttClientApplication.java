@@ -22,12 +22,14 @@ public class MqttClientApplication {
     public static void main(String[] args) throws InterruptedException, ExecutionException {
 
         ConfigurableApplicationContext applicationContext = SpringApplication.run(MqttClientApplication.class, args);
-//        MqttClientImpl mqttClientImpl = (MqttClientImpl) applicationContext.getBean("mqttClientImpl");
-//        Config config = (Config) applicationContext.getBean("config");
+        MqttClientImpl mqttClientImpl = (MqttClientImpl) applicationContext.getBean("mqttClientImpl");
+////        Config config = (Config) applicationContext.getBean("config");
 //        Promise<MqttConnAckMessage> connectResult = mqttClientImpl.connect("test.mosquitto.org", 1883);
 //        Promise<MqttConnAckMessage> connectResult = mqttClientImpl.connect(config.getProperty("host", ""), 1883);
 
-//        System.out.println("main " + connectResult.get().variableHeader().connectReturnCode());
+        Thread.sleep(10000);
+        mqttClientImpl.shutdown();
+        System.out.println("mqttClientImpl.shutdown() %n");
 
 
 //        String commandTopic = config.getProperty("receivingCommandsTopic", "");

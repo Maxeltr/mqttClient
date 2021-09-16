@@ -52,12 +52,11 @@ public class MqttSubscriptionHandler extends ChannelInboundHandlerAdapter {
 
     private final PromiseBroker promiseBroker;
 
-    @Autowired
-    private ApplicationEventPublisher applicationEventPublisher;
-
     public MqttSubscriptionHandler(PromiseBroker promiseBroker, Config config) {
         this.promiseBroker = promiseBroker;
         this.config = config;
+        logger.log(Level.FINE, String.format("Create subscribe handler: %s", this));
+        System.out.println(String.format("Create subscribe handler: %s", this));
     }
 
     @Override

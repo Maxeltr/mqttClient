@@ -38,11 +38,17 @@ import io.netty.util.concurrent.Promise;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ScheduledFuture;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.ApplicationListener;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import org.springframework.scheduling.support.PeriodicTrigger;
 import org.springframework.stereotype.Component;
 import ru.maxeltr.mqttClient.Config.Config;
 import ru.maxeltr.mqttClient.Service.MessageHandler;
@@ -52,7 +58,7 @@ import ru.maxeltr.mqttClient.Service.MessageHandler;
  * @author Maxim Eltratov <<Maxim.Eltratov@ya.ru>>
  */
 //@Sharable
-public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage> {
+public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage> implements ApplicationListener<ApplicationEvent> {
 
     private static final Logger logger = Logger.getLogger(MqttPublishHandler.class.getName());
 
@@ -63,6 +69,12 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
     private final PromiseBroker promiseBroker;
 
     private ChannelHandlerContext ctx;
+
+    private ScheduledFuture<?> retransmitScheduledFuture;
+
+    private ThreadPoolTaskScheduler taskScheduler;
+
+    private PeriodicTrigger periodicTrigger;
 
 //    private final ConcurrentHashMap<Integer, MqttPublishMessage> pendingPubRel = new ConcurrentHashMap<>();
 //
@@ -77,13 +89,23 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
      */
     private final Map<Integer, MqttMessage> pendingPubComp = Collections.synchronizedMap(new LinkedHashMap());
 
-    @Autowired
+//    @Autowired
     private ApplicationEventPublisher applicationEventPublisher;
 
-    public MqttPublishHandler(PromiseBroker promiseBroker, MessageHandler messageHandler, Config config) {
+    public MqttPublishHandler(PromiseBroker promiseBroker, MessageHandler messageHandler, Config config, ThreadPoolTaskScheduler taskScheduler, PeriodicTrigger periodicTrigger, ApplicationEventPublisher applicationEventPublisher) {
         this.promiseBroker = promiseBroker;
         this.messageHandler = messageHandler;
         this.config = config;
+        this.taskScheduler = taskScheduler;
+        this.periodicTrigger = periodicTrigger;
+
+        logger.log(Level.FINE, String.format("Create publish heandler: %s", this));
+        System.out.println(String.format("Create publish heandler: %s", this));
+    }
+
+    public static MqttPublishHandler newInstance(PromiseBroker promiseBroker, MessageHandler messageHandler, Config config, ThreadPoolTaskScheduler taskScheduler, PeriodicTrigger periodicTrigger, ApplicationEventPublisher applicationEventPublisher) {
+        return new MqttPublishHandler(promiseBroker, messageHandler, config, taskScheduler, periodicTrigger, applicationEventPublisher);
+
     }
 
     @Override
@@ -365,64 +387,89 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
         return this.ctx;
     }
 
-    @Scheduled(fixedDelay = 30000, initialDelay = 30000)
-    public void retransmit() {
-        if (this.getChannelHandlerContext() == null) {
-            System.out.println(String.format("ChannelHandlerContext is null in retransmit method. Cannot retransmit."));
-            logger.log(Level.WARNING, String.format("ChannelHandlerContext is null in retransmit method. Cannot retransmit."));
-            return;
+//    @Override
+    public void onApplicationEvent(ApplicationEvent event) {
+        if (event instanceof ShutdownEvent) {
+            this.cancelRetransmit();
+            System.out.println(String.format("ShutdownEvent was received."));
+            logger.log(Level.INFO, String.format("ShutdownEvent was received."));
         }
+    }
 
-        Channel channel = this.getChannelHandlerContext().channel();
+    @PostConstruct
+    public void scheduleRunnableWithCronTrigger() {
+        this.retransmitScheduledFuture = this.taskScheduler.schedule(new RetransmitTask(), this.periodicTrigger);
+        System.out.println(String.format("Start retransmit task. %s", this.hashCode()));
+        logger.log(Level.FINE, String.format("Start retransmit task. %s", this.hashCode()));
+    }
 
-        System.out.println(String.format("Start retransmission in publish handler"));
-        logger.log(Level.FINE, String.format("Start retransmission in publish handler"));
+    public void cancelRetransmit() {
+        this.retransmitScheduledFuture.cancel(false);
+        System.out.println(String.format("Retransmit in publish handler was canceled. %s", this.hashCode()));
+        logger.log(Level.FINE, String.format("Retransmit in publish handler was canceled. %s", this.hashCode()));
+    }
 
-        //Check amount of publish messages, that pending PUBREL. No need to retransmit PUBREC messages.
-        //TODO What to do when amount = x?
-        int index = 1;
-        synchronized (this.pendingPubRel) {
-            System.out.println(String.format("Amount pending PUBREL incoming publish messages is %s", this.pendingPubRel.size()));
-            logger.log(Level.FINE, String.format("Amount pending PUBREL incoming publish messages is %s", this.pendingPubRel.size()));
-            for (Map.Entry<Integer, MqttPublishMessage> pair : this.pendingPubRel.entrySet()) {
-                //System.out.println(String.format("Pending PUBREL. Incoming publish message %s from %s. Message %s", index, this.pendingPubRel.size(), pair.getValue()));
-                //logger.log(Level.INFO, String.format("Pending PUBREL. Incoming publish message %s from %s. Message %s", index, this.pendingPubRel.size(), pair.getValue()));
-                index++;
+    class RetransmitTask implements Runnable {
+
+        @Override
+        public void run() {
+            if (getChannelHandlerContext() == null) {
+                System.out.println(String.format("ChannelHandlerContext is null in retransmit method. Cannot retransmit."));
+                logger.log(Level.WARNING, String.format("ChannelHandlerContext is null in retransmit method. Cannot retransmit."));
+                return;
             }
-        }
 
-        //Check amount of PUBREC messages, that pending PUBCOMP messages.
-        //TODO What to do when amount = x?
-        index = 1;
-        synchronized (this.pendingPubComp) {
-            System.out.println(String.format("Retransmission PUBREL messages for pending PUBCOMP incoming PUBREC messages. Amount incoming PUBREC messages is %s ", this.pendingPubComp.size()));
-            logger.log(Level.FINE, String.format("Retransmission PUBREL messages for pending PUBCOMP incoming PUBREC messages. Amount incoming PUBREC messages is %s ", this.pendingPubComp.size()));
-            for (Map.Entry<Integer, MqttMessage> pair : this.pendingPubComp.entrySet()) {
-                if (channel.isActive()) {
-                    MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.PUBREL, false, MqttQoS.AT_LEAST_ONCE, false, 0);
-                    MqttMessage pubrelMessage = new MqttMessage(fixedHeader, pair.getValue().variableHeader());
+            Channel channel = getChannelHandlerContext().channel();
 
-                    channel.writeAndFlush(pubrelMessage);
+            System.out.println(String.format("Start retransmission in publish handler"));
+            logger.log(Level.FINE, String.format("Start retransmission in publish handler"));
 
-                    MqttMessageIdVariableHeader pubrelVariableHeader = (MqttMessageIdVariableHeader) pubrelMessage.variableHeader();
-                    System.out.println(String.format(
-                            "Retransmission PUBREL message for pending PUBCOMP incoming PUBREC message %s from %s. Sent PUBREL message id: %s",
-                            index, this.pendingPubComp.size(),
-                            pubrelVariableHeader.messageId()
-                    ));
-                    logger.log(Level.FINE, String.format(
-                            "Retransmission PUBREL message for pending PUBCOMP incoming PUBREC message %s from %s. Sent PUBREL message id: %s",
-                            index, this.pendingPubComp.size(),
-                            pubrelVariableHeader.messageId()
-                    ));
-                } else {
-                    System.out.println(String.format("Channel is inactive."));
-                    logger.log(Level.WARNING, String.format("Channel is inactive."));
+            //Check amount of publish messages, that pending PUBREL. No need to retransmit PUBREC messages.
+            //TODO What to do when amount = x?
+            int index = 1;
+            synchronized (pendingPubRel) {
+                System.out.println(String.format("Amount pending PUBREL incoming publish messages is %s", pendingPubRel.size()));
+                logger.log(Level.FINE, String.format("Amount pending PUBREL incoming publish messages is %s", pendingPubRel.size()));
+                for (Map.Entry<Integer, MqttPublishMessage> pair : pendingPubRel.entrySet()) {
+                    //System.out.println(String.format("Pending PUBREL. Incoming publish message %s from %s. Message %s", index, this.pendingPubRel.size(), pair.getValue()));
+                    //logger.log(Level.INFO, String.format("Pending PUBREL. Incoming publish message %s from %s. Message %s", index, this.pendingPubRel.size(), pair.getValue()));
+                    index++;
                 }
-                index++;
             }
+
+            //Check amount of PUBREC messages, that pending PUBCOMP messages.
+            //TODO What to do when amount = x?
+            index = 1;
+            synchronized (pendingPubComp) {
+                System.out.println(String.format("Retransmission PUBREL messages for pending PUBCOMP incoming PUBREC messages. Amount incoming PUBREC messages is %s ", pendingPubComp.size()));
+                logger.log(Level.FINE, String.format("Retransmission PUBREL messages for pending PUBCOMP incoming PUBREC messages. Amount incoming PUBREC messages is %s ", pendingPubComp.size()));
+                for (Map.Entry<Integer, MqttMessage> pair : pendingPubComp.entrySet()) {
+                    if (channel.isActive()) {
+                        MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.PUBREL, false, MqttQoS.AT_LEAST_ONCE, false, 0);
+                        MqttMessage pubrelMessage = new MqttMessage(fixedHeader, pair.getValue().variableHeader());
+
+                        channel.writeAndFlush(pubrelMessage);
+
+                        MqttMessageIdVariableHeader pubrelVariableHeader = (MqttMessageIdVariableHeader) pubrelMessage.variableHeader();
+                        System.out.println(String.format(
+                                "Retransmission PUBREL message for pending PUBCOMP incoming PUBREC message %s from %s. Sent PUBREL message id: %s",
+                                index, pendingPubComp.size(),
+                                pubrelVariableHeader.messageId()
+                        ));
+                        logger.log(Level.FINE, String.format(
+                                "Retransmission PUBREL message for pending PUBCOMP incoming PUBREC message %s from %s. Sent PUBREL message id: %s",
+                                index, pendingPubComp.size(),
+                                pubrelVariableHeader.messageId()
+                        ));
+                    } else {
+                        System.out.println(String.format("Channel is inactive."));
+                        logger.log(Level.WARNING, String.format("Channel is inactive."));
+                    }
+                    index++;
+                }
+            }
+            System.out.println(String.format("End retransmission in publish handler"));
+            logger.log(Level.FINE, String.format("End retransmission in publish handler"));
         }
-        System.out.println(String.format("End retransmission in publish handler"));
-        logger.log(Level.FINE, String.format("End retransmission in publish handler"));
     }
 }
