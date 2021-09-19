@@ -52,14 +52,6 @@ public class MqttChannelInitializer extends ChannelInitializer<SocketChannel> im
 
     private static final Logger logger = Logger.getLogger(MqttChannelInitializer.class.getName());
 
-//    private final MqttDecoder mqttDecoder;
-//    private final MqttEncoder mqttEncoder;
-//    private final ChannelHandler idleStateHandler;
-//    private final ChannelHandler mqttPingHandler;
-//    private final ChannelHandler mqttPublishHandler;
-//    private final ChannelHandler mqttConnectHandler;
-//    private final ChannelHandler mqttSubscriptionHandler;
-//    private final ChannelHandler exceptionHandler;
     private final Config config;
     private final PromiseBroker promiseBroker;
     private final MessageHandler messageHandler;
@@ -68,16 +60,10 @@ public class MqttChannelInitializer extends ChannelInitializer<SocketChannel> im
     private final PeriodicTrigger pingPeriodicTrigger;
     private final ApplicationEventPublisher applicationEventPublisher;
     private ApplicationContext appContext;
+    private MqttPublishHandler mqttPublishHandler;
+    private MqttPingScheduleHandler mqttPingHandler;
 
     public MqttChannelInitializer(
-            //            MqttDecoder mqttDecoder,
-            //            MqttEncoder mqttEncoder,
-            //            ChannelHandler idleStateHandler,
-            //            ChannelHandler mqttPingHandler,
-            //            ChannelHandler mqttConnectHandler,
-            //            ChannelHandler mqttSubscriptionHandler,
-            //            ChannelHandler mqttPublishHandler,
-            //            ChannelHandler exceptionHandler
             Config config,
             PromiseBroker promiseBroker,
             MessageHandler messageHandler,
@@ -86,14 +72,6 @@ public class MqttChannelInitializer extends ChannelInitializer<SocketChannel> im
             ApplicationEventPublisher applicationEventPublisher,
             PeriodicTrigger pingPeriodicTrigger
     ) {
-//        this.mqttDecoder = mqttDecoder;
-//        this.mqttEncoder = mqttEncoder;
-//        this.idleStateHandler = idleStateHandler;
-//        this.mqttPingHandler = mqttPingHandler;
-//        this.mqttConnectHandler = mqttConnectHandler;
-//        this.mqttSubscriptionHandler = mqttSubscriptionHandler;
-//        this.mqttPublishHandler = mqttPublishHandler;
-//        this.exceptionHandler = exceptionHandler;
         this.config = config;
         this.promiseBroker = promiseBroker;
         this.messageHandler = messageHandler;
@@ -105,15 +83,19 @@ public class MqttChannelInitializer extends ChannelInitializer<SocketChannel> im
 
     @Override
     protected void initChannel(SocketChannel ch) throws Exception {
-//        ch.pipeline().addLast("mqttDecoder", this.mqttDecoder);
-//        ch.pipeline().addLast("mqttEncoder", this.mqttEncoder);
-//        ch.pipeline().addLast("idleStateHandler", this.idleStateHandler);
-//        ch.pipeline().addLast("mqttPingHandler", this.mqttPingHandler);
-//        ch.pipeline().addLast("mqttConnectHandler", this.mqttConnectHandler);
-//        ch.pipeline().addLast("mqttSubscriptionHandler", this.mqttSubscriptionHandler);
-//        ch.pipeline().addLast("mqttPublishHandler", this.mqttPublishHandler);
-////        ch.pipeline().addLast(new LoggingHandler(LogLevel.WARN));
-//        ch.pipeline().addLast("exceptionHandler", this.exceptionHandler);
+        if (this.mqttPublishHandler != null) {
+            System.out.println(String.format("Try to cancel retransmit in publish handler before init channel."));
+            logger.log(Level.FINE, String.format("Try to cancel retransmit in publish handler before init channel."));
+            this.mqttPublishHandler.cancelRetransmit();
+        }
+//        if (this.mqttPingHandler != null) {
+//            System.out.println(String.format("Try to cancel pinging in ping handler before init channel."));
+//            logger.log(Level.FINE, String.format("Try to cancel pinging in ping handler before init channel."));
+//            this.mqttPingHandler.cancelPing();
+//        }
+
+//        this.mqttPingHandler = this.createMqttPingHandler();
+        this.mqttPublishHandler = this.createMqttPublishHandler();
 
         ch.pipeline().addLast("mqttDecoder", this.createMqttDecoder());
         ch.pipeline().addLast("mqttEncoder", this.createMqttEncoder());
@@ -121,7 +103,7 @@ public class MqttChannelInitializer extends ChannelInitializer<SocketChannel> im
         ch.pipeline().addLast("mqttPingHandler", this.createMqttPingHandler());
         ch.pipeline().addLast("mqttConnectHandler", this.createMqttConnectHandler());
         ch.pipeline().addLast("mqttSubscriptionHandler", this.createMqttSubscriptionHandler());
-        ch.pipeline().addLast("mqttPublishHandler", this.createMqttPublishHandler());
+        ch.pipeline().addLast("mqttPublishHandler", this.mqttPublishHandler);
 //        ch.pipeline().addLast(new LoggingHandler(LogLevel.WARN));
         ch.pipeline().addLast("exceptionHandler", this.createExceptionHandler());
 
@@ -142,7 +124,12 @@ public class MqttChannelInitializer extends ChannelInitializer<SocketChannel> im
     }
 
     private MqttPingScheduleHandler createMqttPingHandler() {
-        MqttPingScheduleHandler mqttPingHandler = new MqttPingScheduleHandler(this.config, this.threadPoolTaskScheduler, this.pingPeriodicTrigger);
+        MqttPingScheduleHandler mqttPingHandler = new MqttPingScheduleHandler(
+                this.config,
+                this.threadPoolTaskScheduler,
+                this.pingPeriodicTrigger,
+                this.applicationEventPublisher
+        );
         AutowireCapableBeanFactory autowireCapableBeanFactory = this.appContext.getAutowireCapableBeanFactory();
         autowireCapableBeanFactory.autowireBean(mqttPingHandler);
         autowireCapableBeanFactory.initializeBean(mqttPingHandler, "mqttPingHandler");

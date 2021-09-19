@@ -43,9 +43,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.support.PeriodicTrigger;
@@ -58,7 +60,7 @@ import ru.maxeltr.mqttClient.Service.MessageHandler;
  * @author Maxim Eltratov <<Maxim.Eltratov@ya.ru>>
  */
 //@Sharable
-public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage> implements ApplicationListener<ApplicationEvent> {
+public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage> {
 
     private static final Logger logger = Logger.getLogger(MqttPublishHandler.class.getName());
 
@@ -387,26 +389,17 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
         return this.ctx;
     }
 
-//    @Override
-    public void onApplicationEvent(ApplicationEvent event) {
-        if (event instanceof ShutdownEvent) {
-            this.cancelRetransmit();
-            System.out.println(String.format("ShutdownEvent was received."));
-            logger.log(Level.INFO, String.format("ShutdownEvent was received."));
-        }
-    }
-
     @PostConstruct
     public void scheduleRunnableWithCronTrigger() {
         this.retransmitScheduledFuture = this.taskScheduler.schedule(new RetransmitTask(), this.periodicTrigger);
-        System.out.println(String.format("Start retransmit task. %s", this.hashCode()));
-        logger.log(Level.FINE, String.format("Start retransmit task. %s", this.hashCode()));
+        System.out.println(String.format("Start retransmit task. %s", this));
+        logger.log(Level.FINE, String.format("Start retransmit task. %s", this));
     }
 
     public void cancelRetransmit() {
         this.retransmitScheduledFuture.cancel(false);
-        System.out.println(String.format("Retransmit in publish handler was canceled. %s", this.hashCode()));
-        logger.log(Level.FINE, String.format("Retransmit in publish handler was canceled. %s", this.hashCode()));
+        System.out.println(String.format("Retransmit in publish handler was canceled. %s", this));
+        logger.log(Level.FINE, String.format("Retransmit in publish handler was canceled. %s", this));
     }
 
     class RetransmitTask implements Runnable {

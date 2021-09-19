@@ -73,9 +73,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.PostConstruct;
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationListener;
@@ -89,11 +91,10 @@ import ru.maxeltr.mqttClient.Service.MessageHandler;
  *
  * @author Maxim Eltratov <<Maxim.Eltratov@ya.ru>>
  */
-public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, CommandLineRunner  {
+public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, CommandLineRunner, ApplicationContextAware {
 
     private static final Logger logger = Logger.getLogger(MqttClientImpl.class.getName());
 
-    @Autowired
     private ApplicationContext appContext;
 
     private Channel channel;
@@ -163,6 +164,11 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, Co
 
     public void setMessageDispatcher(MessageDispatcher messageDispatcher) {
         this.messageDispatcher = messageDispatcher;
+    }
+
+    @Override
+    public void setApplicationContext(ApplicationContext appContext) throws BeansException {
+        this.appContext = appContext;
     }
 
 //    @Override
@@ -580,6 +586,10 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, Co
         ));
     }
 
+    public void exit() {
+//		this.appContext.close();
+    }
+
     public void shutdown() {
         this.publishShutdownEvent();
         if (this.channel != null) {
@@ -618,7 +628,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, Co
 
     @PostConstruct
     public void scheduleRunnableWithCronTrigger() {
-        this.taskScheduler.schedule(new RetransmitTask(), this.periodicTrigger);
+        this.retransmitScheduledFuture = this.taskScheduler.schedule(new RetransmitTask(), this.periodicTrigger);
         System.out.println(String.format("Start retransmit task. %s", this.hashCode()));
         logger.log(Level.FINE, String.format("Start retransmit task. %s", this.hashCode()));
     }
