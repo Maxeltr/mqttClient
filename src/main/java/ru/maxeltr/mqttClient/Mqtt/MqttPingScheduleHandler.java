@@ -121,12 +121,17 @@ public class MqttPingScheduleHandler extends ChannelInboundHandlerAdapter {
 
     private void publishPingTimeoutEvent() {
         applicationEventPublisher.publishEvent(new PingTimeoutEvent(this, "Ping response was not received for keepAlive time."));
-        System.out.println(String.format("Publish PingTimeoutEvent."));
-        logger.log(Level.WARNING, String.format("Publish PingTimeoutEvent."));
+        System.out.println(String.format("Publish PingTimeoutEvent. %s", this));
+        logger.log(Level.WARNING, String.format("Publish PingTimeoutEvent. %s", this));
 
     }
 
     class RunnableTask implements Runnable {
+
+        public RunnableTask() {
+            System.out.println(String.format("Create sending ping task in ping handler. %s", this));
+            logger.log(Level.FINE, String.format("Create sending ping task in ping handler. %s.", this));
+        }
 
         @Override
         public void run() {
