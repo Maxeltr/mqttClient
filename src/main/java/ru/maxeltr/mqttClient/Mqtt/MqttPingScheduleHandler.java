@@ -85,8 +85,8 @@ public class MqttPingScheduleHandler extends ChannelInboundHandlerAdapter {
 
     public void cancelPing() {
         this.future.cancel(false);
-        System.out.println(String.format("Pinging was canceled."));
-        logger.log(Level.INFO, String.format("Pinging was canceled."));
+        System.out.println(String.format("Pinging was canceled. %s", this));
+        logger.log(Level.INFO, String.format("Pinging was canceled. %s", this));
     }
 
     @Override
@@ -135,20 +135,20 @@ public class MqttPingScheduleHandler extends ChannelInboundHandlerAdapter {
 
         @Override
         public void run() {
-            if (MqttPingScheduleHandler.this.pingRequestWasSent) {
-                System.out.println(String.format("Ping response was not received for keepAlive time."));
-                logger.log(Level.WARNING, String.format("Ping response was not received for keepAlive time."));
+            if (pingRequestWasSent) {
+                System.out.println(String.format("Ping response was not received for keepAlive time. %s", this));
+                logger.log(Level.WARNING, String.format("Ping response was not received for keepAlive time. %s", this));
 //                MqttPingScheduleHandler.this.future.cancel(false);
-                MqttPingScheduleHandler.this.publishPingTimeoutEvent();
+                publishPingTimeoutEvent();
                 return;
             }
 
             MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.PINGREQ, false, MqttQoS.AT_MOST_ONCE, false, 0);
             MqttMessage msg = new MqttMessage(fixedHeader);
-            MqttPingScheduleHandler.this.ctx.writeAndFlush(msg);
-            MqttPingScheduleHandler.this.pingRequestWasSent = true;
-            logger.log(Level.FINE, String.format("Sent ping request %s.", msg));
-            System.out.println(String.format("Sent ping request %s.", msg));
+            ctx.writeAndFlush(msg);
+            pingRequestWasSent = true;
+            logger.log(Level.FINE, String.format("Sent ping request. %s. Message %s.", this, msg));
+            System.out.println(String.format("Sent ping request. %s. Message %s.", this, msg));
 
         }
     }

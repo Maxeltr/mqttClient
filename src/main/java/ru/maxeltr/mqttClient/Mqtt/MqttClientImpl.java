@@ -629,17 +629,22 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, Co
     @PostConstruct
     public void scheduleRunnableWithCronTrigger() {
         this.retransmitScheduledFuture = this.taskScheduler.schedule(new RetransmitTask(), this.periodicTrigger);
-        System.out.println(String.format("Start retransmit task. %s", this.hashCode()));
-        logger.log(Level.FINE, String.format("Start retransmit task. %s", this.hashCode()));
+        System.out.println(String.format("Start retransmit task. %s", this));
+        logger.log(Level.FINE, String.format("Start retransmit task. %s", this));
     }
 
     public void cancelRetransmit() {
         this.retransmitScheduledFuture.cancel(false);
-        System.out.println(String.format("Retransmit was canceled. %s", this.hashCode()));
-        logger.log(Level.FINE, String.format("Retransmit was canceled. %s", this.hashCode()));
+        System.out.println(String.format("Retransmit was canceled. %s", this));
+        logger.log(Level.FINE, String.format("Retransmit was canceled. %s", this));
     }
 
     class RetransmitTask implements Runnable {
+
+        public RetransmitTask() {
+            logger.log(Level.FINE, String.format("Create retransmit task in mqtt client: %s", this));
+            System.out.println(String.format("Create retransmit task in mqtt client: %s", this));
+        }
 
         @Override
         public void run() {
