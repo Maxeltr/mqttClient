@@ -119,7 +119,7 @@ public class AppAnnotationConfig {
             throw new IllegalStateException("Invalid keepAliveTimer property");
         }
         PeriodicTrigger periodicTrigger = new PeriodicTrigger(Long.parseLong(keepAliveTimer, 10), TimeUnit.SECONDS);
-        periodicTrigger.setFixedRate(true);
+////        periodicTrigger.setFixedRate(true);
         periodicTrigger.setInitialDelay(Long.parseLong(keepAliveTimer, 10));
         return periodicTrigger;
     }
@@ -134,7 +134,7 @@ public class AppAnnotationConfig {
             throw new IllegalStateException("Invalid retransmitMqttMessageTimer property");
         }
         PeriodicTrigger periodicTrigger = new PeriodicTrigger(Long.parseLong(retransmitMqttMessageTimer, 10), TimeUnit.SECONDS);
-        periodicTrigger.setFixedRate(true);
+//        periodicTrigger.setFixedRate(true);
         periodicTrigger.setInitialDelay(Long.parseLong(retransmitMqttMessageTimer, 10));
         return periodicTrigger;
     }
