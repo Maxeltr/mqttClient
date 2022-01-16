@@ -27,9 +27,9 @@ public class MqttClientApplication {
 //        Promise<MqttConnAckMessage> connectResult = mqttClientImpl.connect("test.mosquitto.org", 1883);
 //        Promise<MqttConnAckMessage> connectResult = mqttClientImpl.connect(config.getProperty("host", ""), 1883);
 
-        Thread.sleep(10000);
-        mqttClientImpl.shutdown();
-        System.out.println("mqttClientImpl.shutdown() %n");
+//        Thread.sleep(10000);
+//        mqttClientImpl.shutdown();
+//        System.out.println("mqttClientImpl.shutdown() %n");
 
 
 //        String commandTopic = config.getProperty("receivingCommandsTopic", "");

@@ -34,17 +34,22 @@ function createCommand(commandNumber) {
 }
 
 function showReplies(message, card) {
+    console.log(card);
     document.getElementById(card + '-timestamp').innerHTML = message.timestamp;
     if (message.result.toUpperCase() === 'OK') {
-        var image = new Image();
-        image.src = 'data:image/png;base64,' + message.payload;
-        document.getElementById(card + '-payload').innerHTML = '<img src="' + image.src + '" class="img-fluid" alt="...">';
-        var saveButton = document.getElementById(card + '-save');
-        saveButton.setAttribute('href', image.src);
-        saveButton.classList.remove("disabled");
-    } else {	
-		document.getElementById(card + '-payload').innerHTML = '<p>' + message.result + '<br>' + message.payload + '</p>';
-	}
+        if (message.name.toUpperCase() === 'TAKESCREENSHOT') {
+            var image = new Image();
+            image.src = 'data:image/png;base64,' + message.payload;
+            document.getElementById(card + '-payload').innerHTML = '<img src="' + image.src + '" class="img-fluid" alt="...">';
+            var saveButton = document.getElementById(card + '-save');
+            saveButton.setAttribute('href', image.src);
+            saveButton.classList.remove("disabled");
+        } else {
+            document.getElementById(card + '-payload').innerHTML = '<p>' + message.result + '<br>' + message.payload + '</p>';
+        }
+    } else {
+        document.getElementById(card + '-payload').innerHTML = '<p>' + message.result + '<br>' + message.payload + '</p>';
+    }
 }
 
 function showMessages(message, card) {
@@ -63,9 +68,9 @@ $(function () {
     $("#disconnect").click(function () {
         disconnect();
     });
-    $("#sendCommand ").click(function (data) {
-        var arg = $(data).attr('data-arg');
-        createCommand('1');
+    $("#sendCommand ").click(function () {
+        var arg = $(this).val()
+        createCommand(arg);
     });
 
 

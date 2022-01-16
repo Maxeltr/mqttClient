@@ -63,7 +63,9 @@ public class RemoteCommandController {
         String numberCommand = command.getCommandNumber();
         String sendTo = config.getProperty("command." + numberCommand + ".SendTo", "");
         if (sendTo.trim().isEmpty()) {
-            throw new IllegalStateException(String.format("Invalid command.%s.SendTo property.", numberCommand));
+            logger.log(Level.WARNING, String.format("Invalid command.%s.SendTo property.", numberCommand));
+            System.out.println(String.format("Invalid command.%s.SendTo property.", numberCommand));
+            return;
         }
 
         command.setId(UUID.randomUUID().toString())
