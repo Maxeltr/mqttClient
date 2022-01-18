@@ -42,13 +42,16 @@ public class Reply {
 
     private String payload;
 
+    private String type;
+
     private String result;
 
-    public Reply(String commandId, String name, String timestamp, String payload, String result) {
+    public Reply(String commandId, String name, String timestamp, String payload, String result, String type) {
         this.commandId = commandId;
         this.name = name;
         this.timestamp = timestamp;
         this.payload = payload;
+        this.type = type;
         this.result = result;
     }
 
@@ -68,6 +71,10 @@ public class Reply {
         return payload;
     }
 
+    public String getType() {
+        return type;
+    }
+
     public String getResult() {
         return result;
     }
@@ -76,7 +83,7 @@ public class Reply {
     public String toString() {
         return new StringBuilder(StringUtil.simpleClassName(this))
                 .append('[')
-                .append(String.format("commandId=%s, name=%s, result=%s, timestamp=%s, payload=%s [length=%s]", this.commandId, this.name, this.result, this.timestamp, this.payload.substring(0, Math.min(this.payload.length(), 64)), this.payload.length()))
+                .append(String.format("commandId=%s, name=%s, type=%s, result=%s, timestamp=%s, payload=%s [length=%s]", this.commandId, this.name, this.type, this.result, this.timestamp, this.payload.substring(0, Math.min(this.payload.length(), 64)), this.payload.length()))
                 .append(']')
                 .toString();
     }

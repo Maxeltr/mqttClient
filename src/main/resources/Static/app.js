@@ -35,21 +35,64 @@ function createCommand(commandNumber) {
 
 function showReplies(message, card) {
     console.log(card);
-    document.getElementById(card + '-timestamp').innerHTML = message.timestamp;
-    if (message.result.toUpperCase() === 'OK') {
-        if (message.name.toUpperCase() === 'TAKESCREENSHOT') {
+
+    if (message.timestamp === 'undefined') {
+        console.log('message.timestamp is undefined');
+        document.getElementById(card + '-timestamp').innerHTML === 'undefined';
+    } else {
+        var date = new Date(message.timestamp * 1000);
+        var hours = date.getHours();
+        var minutes = '0' + date.getMinutes();
+        var seconds = '0' + date.getSeconds();
+        document.getElementById(card + '-timestamp').innerHTML = hours + ':' + minutes.substr(-2) + ':' + seconds.substr(-2);
+    }
+
+    if (message.result === 'undefined') {
+        console.log('message.result is undefined');
+        document.getElementById(card + '-payload').innerHTML = '<p> message.result is undefined </p>';
+        return;
+    }
+
+    if (message.result.toUpperCase() !== 'OK') {
+        console.log('message.result is fail');
+        document.getElementById(card + '-payload').innerHTML = '<p>' + 'Result is fail ' + message.result + '<br>' + message.payload + '</p>';
+        return;
+    }
+
+    if (message.type !== 'undefined') {
+        if (message.type.toUpperCase() === 'IMAGE/JPEG') {
             var image = new Image();
-            image.src = 'data:image/png;base64,' + message.payload;
+            image.src = 'data:image/jpeg;base64,' + message.payload;
             document.getElementById(card + '-payload').innerHTML = '<img src="' + image.src + '" class="img-fluid" alt="...">';
             var saveButton = document.getElementById(card + '-save');
             saveButton.setAttribute('href', image.src);
             saveButton.classList.remove("disabled");
+        } else if (message.type.toUpperCase() === 'TEXT/PLAIN') {
+            document.getElementById(card + '-payload').innerHTML = '<p>' + message.payload + '</p>';
         } else {
-            document.getElementById(card + '-payload').innerHTML = '<p>' + message.result + '<br>' + message.payload + '</p>';
+            console.log('message.type is ' + message.type);
+            document.getElementById(card + '-payload').innerHTML = '<p>' + "Type is " + message.type + '<br>' + message.payload + '</p>';
         }
     } else {
-        document.getElementById(card + '-payload').innerHTML = '<p>' + message.result + '<br>' + message.payload + '</p>';
+        console.log('message.type is undefined');
+        document.getElementById(card + '-payload').innerHTML = '<p>' + 'message.type is undefined' + '<br>' + message.payload + '</p>';
     }
+
+//    document.getElementById(card + '-timestamp').innerHTML = message.timestamp;
+//    if (message.result.toUpperCase() === 'OK') {
+//        if (message.name.toUpperCase() === 'TAKESCREENSHOT') {
+//            var image = new Image();
+//            image.src = 'data:image/png;base64,' + message.payload;
+//            document.getElementById(card + '-payload').innerHTML = '<img src="' + image.src + '" class="img-fluid" alt="...">';
+//            var saveButton = document.getElementById(card + '-save');
+//            saveButton.setAttribute('href', image.src);
+//            saveButton.classList.remove("disabled");
+//        } else {
+//            document.getElementById(card + '-payload').innerHTML = '<p>' + message.result + '<br>' + message.payload + '</p>';
+//        }
+//    } else {
+//        document.getElementById(card + '-payload').innerHTML = '<p>' + message.result + '<br>' + message.payload + '</p>';
+//    }
 }
 
 function showMessages(message, card) {

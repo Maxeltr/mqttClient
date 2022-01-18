@@ -27,12 +27,9 @@ import java.time.Instant;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.util.HtmlUtils;
 import ru.maxeltr.mqttClient.Config.Config;
 
 /**
@@ -40,9 +37,9 @@ import ru.maxeltr.mqttClient.Config.Config;
  * @author Maxim Eltratov <<Maxim.Eltratov@ya.ru>>
  */
 @Controller
-public class RemoteCommandController {
+public class SendController {
 
-    private static final Logger logger = Logger.getLogger(RemoteCommandController.class.getName());
+    private static final Logger logger = Logger.getLogger(SendController.class.getName());
 
     private final CommandService commandService;
 
@@ -51,7 +48,7 @@ public class RemoteCommandController {
 //    @Autowired
     private SimpMessagingTemplate simpMessagingTemplate;
 
-    public RemoteCommandController(Config config, CommandService commandService, SimpMessagingTemplate simpMessagingTemplate) {
+    public SendController(Config config, CommandService commandService, SimpMessagingTemplate simpMessagingTemplate) {
         this.config = config;
         this.commandService = commandService;
         this.simpMessagingTemplate = simpMessagingTemplate;

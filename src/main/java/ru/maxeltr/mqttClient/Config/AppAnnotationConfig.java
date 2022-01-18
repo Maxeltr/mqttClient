@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.LogManager;
+import org.apache.tika.Tika;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
@@ -58,7 +59,7 @@ import ru.maxeltr.mqttClient.Mqtt.PromiseBroker;
 import ru.maxeltr.mqttClient.Service.CommandService;
 import ru.maxeltr.mqttClient.Service.DisplayController;
 import ru.maxeltr.mqttClient.Service.MessageHandler;
-import ru.maxeltr.mqttClient.Service.RemoteCommandController;
+import ru.maxeltr.mqttClient.Service.SendController;
 
 /**
  *
@@ -107,6 +108,20 @@ public class AppAnnotationConfig {
         threadPoolTaskScheduler.setPoolSize(1);
         threadPoolTaskScheduler.setThreadNamePrefix("pingThreadPoolTaskScheduler");
         return threadPoolTaskScheduler;
+    }
+
+    /*
+     * For scheduling publish messages
+     */
+    @Bean(name="publishPeriodicTrigger")
+    public PeriodicTrigger publishPeriodicTrigger(Config config) {						//add
+        String publishMqttMessageTimer = config.getProperty("publishMqttMessageTimer", "10");
+        if (publishMqttMessageTimer.trim().isEmpty()) {
+            throw new IllegalStateException("Invalid publishMqttMessageTimer property");
+        }
+        PeriodicTrigger periodicTrigger = new PeriodicTrigger(Long.parseLong(publishMqttMessageTimer, 10), TimeUnit.SECONDS);
+        periodicTrigger.setInitialDelay(Long.parseLong(publishMqttMessageTimer, 10));
+        return periodicTrigger;
     }
 
     /*
@@ -202,6 +217,11 @@ public class AppAnnotationConfig {
     @Bean
     public MessageDispatcher messageDispatcher(Config config, MqttClientImpl mqttClientImpl, CommandService commandService, MessageHandler messageHandler, DisplayController displayController) {
         return new MessageDispatcher(config, mqttClientImpl, commandService, messageHandler, displayController);
+    }
+
+    @Bean
+    public Tika tika () {
+        return new Tika();
     }
 
 //    @Bean

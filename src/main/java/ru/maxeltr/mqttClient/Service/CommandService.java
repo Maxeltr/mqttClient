@@ -43,6 +43,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.apache.tika.Tika;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import ru.maxeltr.mqttClient.Config.Config;
 import ru.maxeltr.mqttClient.Mqtt.MqttClientImpl;
@@ -66,6 +68,9 @@ public class CommandService {
     private MessageDispatcher messageDispatcher;
 
     private final Map<String, Command> pendingReplyCommands = Collections.synchronizedMap(new LinkedHashMap());
+
+    @Autowired
+    private Tika tika;
 
     public CommandService(Config config) {
         this.config = config;
@@ -94,7 +99,7 @@ public class CommandService {
         HashMap<String, String> isValid = this.validate(command);
         if (!Boolean.parseBoolean(isValid.get("isValid"))) {
             if (replyTopic != null && !replyTopic.trim().isEmpty()) {
-                this.send(replyTopic, new Reply(command.getId(), command.getName(), timestamp, isValid.get("message"), "fail"));
+                this.send(replyTopic, new Reply(command.getId(), command.getName(), timestamp, isValid.get("message"), "fail", "text/plain"));
             }
             logger.log(Level.INFO, String.format(
                     "Command has invalid format. %s",
@@ -108,7 +113,7 @@ public class CommandService {
         }
 
         if (!this.allowedCommands.contains(command.getName())) {
-            this.send(replyTopic, new Reply(command.getId(), command.getName(), timestamp, "The command is not allowed.", "fail"));
+            this.send(replyTopic, new Reply(command.getId(), command.getName(), timestamp, "The command is not allowed.", "fail", "text/plain"));
             logger.log(Level.INFO, String.format("Command not allowed name=%s, id=%s.", command.getName(), command.getId()));
             System.out.println(String.format("Command not allowed name=%s, id=%s.", command.getName(), command.getId()));
 
@@ -119,11 +124,18 @@ public class CommandService {
         if (result.isEmpty()) {
             logger.log(Level.INFO, String.format("Error with executing command name=%s, id=%s. Empty result was returned. Arguments %s", command.getName(), command.getId(), command.getArguments()));
             System.out.println(String.format("Error with executing command name=%s, id=%s. Empty result was returned. Arguments %s", command.getName(), command.getId(), command.getArguments()));
-            this.send(replyTopic, new Reply(command.getId(), command.getName(), timestamp, "Error with executing command", "fail"));
+            this.send(replyTopic, new Reply(command.getId(), command.getName(), timestamp, "Error with executing command", "fail", "text/plain"));
             return;
         }
 
-        this.send(replyTopic, new Reply(command.getId(), command.getName(), timestamp, result, "ok"));
+        String type;
+        try {
+            type = this.tika.detect(Base64.getDecoder().decode(result));
+        } catch (IllegalArgumentException e) {
+            type = "text/plain";
+        }
+
+        this.send(replyTopic, new Reply(command.getId(), command.getName(), timestamp, result, "ok", type));
     }
 
     @Async
