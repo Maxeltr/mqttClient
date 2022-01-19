@@ -23,21 +23,14 @@
  */
 package ru.maxeltr.mqttClient.Config;
 
-import io.netty.channel.ChannelHandler;
-import io.netty.handler.codec.mqtt.MqttDecoder;
-import io.netty.handler.codec.mqtt.MqttEncoder;
-import io.netty.handler.timeout.IdleStateHandler;
 import java.io.IOException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.LogManager;
 import org.apache.tika.Tika;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.context.annotation.Scope;
 import org.springframework.context.event.ApplicationEventMulticaster;
 import org.springframework.context.event.SimpleApplicationEventMulticaster;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
@@ -46,20 +39,13 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.support.PeriodicTrigger;
-import org.springframework.stereotype.Controller;
 import ru.maxeltr.mqttClient.Service.MessageDispatcher;
-import ru.maxeltr.mqttClient.Mqtt.MqttExceptionHandler;
 import ru.maxeltr.mqttClient.Mqtt.MqttChannelInitializer;
 import ru.maxeltr.mqttClient.Mqtt.MqttClientImpl;
-import ru.maxeltr.mqttClient.Mqtt.MqttConnectHandler;
-import ru.maxeltr.mqttClient.Mqtt.MqttPingScheduleHandler;
-import ru.maxeltr.mqttClient.Mqtt.MqttPublishHandler;
-import ru.maxeltr.mqttClient.Mqtt.MqttSubscriptionHandler;
 import ru.maxeltr.mqttClient.Mqtt.PromiseBroker;
 import ru.maxeltr.mqttClient.Service.CommandService;
 import ru.maxeltr.mqttClient.Service.DisplayController;
 import ru.maxeltr.mqttClient.Service.MessageHandler;
-import ru.maxeltr.mqttClient.Service.SendController;
 
 /**
  *
@@ -100,12 +86,12 @@ public class AppAnnotationConfig {
     }
 
     /*
-     * For scheduling a ping request with a fixed delay which is defined by config (MqttPingScheduleHandler)
+     * For scheduling tasks
      */
     @Bean
     public ThreadPoolTaskScheduler threadPoolTaskScheduler() {
         ThreadPoolTaskScheduler threadPoolTaskScheduler = new ThreadPoolTaskScheduler();
-        threadPoolTaskScheduler.setPoolSize(1);
+        threadPoolTaskScheduler.setPoolSize(10);
         threadPoolTaskScheduler.setThreadNamePrefix("pingThreadPoolTaskScheduler");
         return threadPoolTaskScheduler;
     }
@@ -134,7 +120,6 @@ public class AppAnnotationConfig {
             throw new IllegalStateException("Invalid keepAliveTimer property");
         }
         PeriodicTrigger periodicTrigger = new PeriodicTrigger(Long.parseLong(keepAliveTimer, 10), TimeUnit.SECONDS);
-////        periodicTrigger.setFixedRate(true);
         periodicTrigger.setInitialDelay(Long.parseLong(keepAliveTimer, 10));
         return periodicTrigger;
     }
@@ -149,7 +134,6 @@ public class AppAnnotationConfig {
             throw new IllegalStateException("Invalid retransmitMqttMessageTimer property");
         }
         PeriodicTrigger periodicTrigger = new PeriodicTrigger(Long.parseLong(retransmitMqttMessageTimer, 10), TimeUnit.SECONDS);
-//        periodicTrigger.setFixedRate(true);
         periodicTrigger.setInitialDelay(Long.parseLong(retransmitMqttMessageTimer, 10));
         return periodicTrigger;
     }

@@ -642,19 +642,19 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, Co
     class RetransmitTask implements Runnable {
 
         public RetransmitTask() {
-            logger.log(Level.FINE, String.format("Create retransmit task in mqtt client: %s", this));
+            logger.log(Level.INFO, String.format("Create retransmit task in mqtt client: %s", this));
             System.out.println(String.format("Create retransmit task in mqtt client: %s", this));
         }
 
         @Override
         public void run() {
             System.out.println(String.format("Strart retransmission in MqttClientImpl"));
-            logger.log(Level.FINE, String.format("Strart retransmission in MqttClientImpl"));
+            logger.log(Level.INFO, String.format("Strart retransmission in MqttClientImpl"));
 
             int index = 1;
             synchronized (pendingConfirmationSubscriptions) {
                 System.out.println(String.format("Retransmission pending confirmation subscriptions. Amount subscription messages is %s", pendingConfirmationSubscriptions.size()));
-                logger.log(Level.FINE, String.format("Retransmission pending confirmation subscriptions. Amount subscription messages is %s", pendingConfirmationSubscriptions.size()));
+                logger.log(Level.INFO, String.format("Retransmission pending confirmation subscriptions. Amount subscription messages is %s", pendingConfirmationSubscriptions.size()));
                 for (Map.Entry<Integer, MqttSubscribeMessage> pair : pendingConfirmationSubscriptions.entrySet()) {
                     if (channel.isActive()) {
                         writeAndFlush(pair.getValue());
@@ -664,7 +664,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, Co
                                 index, pendingConfirmationSubscriptions.size(),
                                 pair.getValue().variableHeader().messageId()
                         ));
-                        logger.log(Level.FINE, String.format(
+                        logger.log(Level.INFO, String.format(
                                 "Retransmission pending confirmation subscription. %s from %s. Message id: %s",
                                 index,
                                 pendingConfirmationSubscriptions.size(),
@@ -675,11 +675,11 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, Co
                     index++;
                 }
             }
-            
+
             index = 1;
             synchronized (pendingConfirmationUnsubscriptions) {
                 System.out.println(String.format("Retransmission pending confirmation unsubscriptions. Amount unsubscription messages is %s", pendingConfirmationUnsubscriptions.size()));
-                logger.log(Level.FINE, String.format("Retransmission pending confirmation unsubscriptions. Amount unsubscription messages is %s", pendingConfirmationUnsubscriptions.size()));
+                logger.log(Level.INFO, String.format("Retransmission pending confirmation unsubscriptions. Amount unsubscription messages is %s", pendingConfirmationUnsubscriptions.size()));
                 for (Map.Entry<Integer, MqttUnsubscribeMessage> pair : pendingConfirmationUnsubscriptions.entrySet()) {
                     if (channel.isActive()) {
                         writeAndFlush(pair.getValue());
@@ -689,7 +689,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, Co
                                 index, pendingConfirmationUnsubscriptions.size(),
                                 pair.getValue().variableHeader().messageId()
                         ));
-                        logger.log(Level.FINE, String.format(
+                        logger.log(Level.INFO, String.format(
                                 "Retransmission pending confirmation unsubscription. %s from %s. Message id: %s",
                                 index, pendingConfirmationUnsubscriptions.size(),
                                 pair.getValue().variableHeader().messageId()
@@ -702,7 +702,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, Co
             index = 1;
             synchronized (pendingPubRec) {
                 System.out.println(String.format("Retransmission publish messages for pending PUBREC publish messages (QoS2). Amount publish messages is %s", pendingPubRec.size()));
-                logger.log(Level.FINE, String.format("Retransmission publish messages for pending PUBREC publish messages (QoS2). Amount publish messages is %s", pendingPubRec.size()));
+                logger.log(Level.INFO, String.format("Retransmission publish messages for pending PUBREC publish messages (QoS2). Amount publish messages is %s", pendingPubRec.size()));
                 for (Map.Entry<Integer, MqttPublishMessage> pair : pendingPubRec.entrySet()) {
                     if (channel.isActive()) {
                         MqttPublishMessage originalMessage = (MqttPublishMessage) pair.getValue();
@@ -721,7 +721,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, Co
                                 index, pendingPubRec.size(),
                                 message.variableHeader().packetId()
                         ));
-                        logger.log(Level.FINE, String.format(
+                        logger.log(Level.INFO, String.format(
                                 "Retransmission publish message for pending PUBREC publish message (QoS2). %s from %s. Message id: %s",
                                 index, pendingPubRec.size(),
                                 message.variableHeader().packetId()
@@ -734,7 +734,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, Co
             index = 1;
             synchronized (pendingPubAck) {
                 System.out.println(String.format("Retransmission publish messages for pending PUBACK publish messages (QoS1). Amount publish messages is %s", pendingPubAck.size()));
-                logger.log(Level.FINE, String.format("Retransmission publish messages for pending PUBACK publish messages (QoS1). Amount publish messages is %s", pendingPubAck.size()));
+                logger.log(Level.INFO, String.format("Retransmission publish messages for pending PUBACK publish messages (QoS1). Amount publish messages is %s", pendingPubAck.size()));
                 for (Map.Entry<Integer, MqttPublishMessage> pair : pendingPubAck.entrySet()) {
                     if (channel.isActive()) {
                         MqttPublishMessage originalMessage = (MqttPublishMessage) pair.getValue();
@@ -754,7 +754,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, Co
                                 pendingPubAck.size(),
                                 message.variableHeader().packetId()
                         ));
-                        logger.log(Level.FINE, String.format(
+                        logger.log(Level.INFO, String.format(
                                 "Retransmission publish message for pending PUBACK publish message (QoS1). %s from %s. Message id: %s",
                                 index,
                                 pendingPubAck.size(),
@@ -765,7 +765,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, Co
                 }
             }
             System.out.println(String.format("End retransmission in MqttClientImpl"));
-            logger.log(Level.FINE, String.format("End retransmission in MqttClientImpl"));
+            logger.log(Level.INFO, String.format("End retransmission in MqttClientImpl"));
         }
     }
 }

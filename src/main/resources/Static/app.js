@@ -40,7 +40,7 @@ function showReplies(message, card) {
         console.log('message.timestamp is undefined');
         document.getElementById(card + '-timestamp').innerHTML === 'undefined';
     } else {
-        var date = new Date(message.timestamp * 1000);
+        var date = new Date(parseInt(message.timestamp, 10));
         var hours = date.getHours();
         var minutes = '0' + date.getMinutes();
         var seconds = '0' + date.getSeconds();

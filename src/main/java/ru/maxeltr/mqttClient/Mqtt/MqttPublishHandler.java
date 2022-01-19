@@ -415,14 +415,14 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
             Channel channel = getChannelHandlerContext().channel();
 
             System.out.println(String.format("Start retransmission in publish handler"));
-            logger.log(Level.FINE, String.format("Start retransmission in publish handler"));
+            logger.log(Level.INFO, String.format("Start retransmission in publish handler"));
 
             //Check amount of publish messages, that pending PUBREL. No need to retransmit PUBREC messages.
             //TODO What to do when amount = x?
             int index = 1;
             synchronized (pendingPubRel) {
                 System.out.println(String.format("Amount pending PUBREL incoming publish messages is %s", pendingPubRel.size()));
-                logger.log(Level.FINE, String.format("Amount pending PUBREL incoming publish messages is %s", pendingPubRel.size()));
+                logger.log(Level.INFO, String.format("Amount pending PUBREL incoming publish messages is %s", pendingPubRel.size()));
                 for (Map.Entry<Integer, MqttPublishMessage> pair : pendingPubRel.entrySet()) {
                     //System.out.println(String.format("Pending PUBREL. Incoming publish message %s from %s. Message %s", index, this.pendingPubRel.size(), pair.getValue()));
                     //logger.log(Level.INFO, String.format("Pending PUBREL. Incoming publish message %s from %s. Message %s", index, this.pendingPubRel.size(), pair.getValue()));
@@ -435,7 +435,7 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
             index = 1;
             synchronized (pendingPubComp) {
                 System.out.println(String.format("Retransmission PUBREL messages for pending PUBCOMP incoming PUBREC messages. Amount incoming PUBREC messages is %s ", pendingPubComp.size()));
-                logger.log(Level.FINE, String.format("Retransmission PUBREL messages for pending PUBCOMP incoming PUBREC messages. Amount incoming PUBREC messages is %s ", pendingPubComp.size()));
+                logger.log(Level.INFO, String.format("Retransmission PUBREL messages for pending PUBCOMP incoming PUBREC messages. Amount incoming PUBREC messages is %s ", pendingPubComp.size()));
                 for (Map.Entry<Integer, MqttMessage> pair : pendingPubComp.entrySet()) {
                     if (channel.isActive()) {
                         MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.PUBREL, false, MqttQoS.AT_LEAST_ONCE, false, 0);
@@ -449,7 +449,7 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
                                 index, pendingPubComp.size(),
                                 pubrelVariableHeader.messageId()
                         ));
-                        logger.log(Level.FINE, String.format(
+                        logger.log(Level.INFO, String.format(
                                 "Retransmission PUBREL message for pending PUBCOMP incoming PUBREC message %s from %s. Sent PUBREL message id: %s",
                                 index, pendingPubComp.size(),
                                 pubrelVariableHeader.messageId()
@@ -462,7 +462,7 @@ public class MqttPublishHandler extends SimpleChannelInboundHandler<MqttMessage>
                 }
             }
             System.out.println(String.format("End retransmission in publish handler"));
-            logger.log(Level.FINE, String.format("End retransmission in publish handler"));
+            logger.log(Level.INFO, String.format("End retransmission in publish handler"));
         }
     }
 }
