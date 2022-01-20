@@ -40,20 +40,12 @@ public class CommandBuilder {
 
     private String name;
 
-    private String target;
-
     private String replyTo;
 
     private String arguments;
 
     private String timestamp;
 
-//    CommandBuilder(String commandNumber) {
-//        this.commandNumber = commandNumber;
-//    }
-//    CommandBuilder(String name) {
-//        this.name = name;
-//    }
     public String getCommandNumber() {
         return commandNumber;
     }
@@ -78,15 +70,6 @@ public class CommandBuilder {
 
     public CommandBuilder setName(String name) {
         this.name = name;
-        return this;
-    }
-
-    public String getTarget() {
-        return target;
-    }
-
-    public CommandBuilder setTarget(String target) {
-        this.target = target;
         return this;
     }
 
@@ -131,14 +114,14 @@ public class CommandBuilder {
             throw new IllegalStateException("Invalid timestamp property");
         }
 
-        return new Command(this.id, this.name, this.target, this.replyTo, this.arguments, this.timestamp);
+        return new Command(this.id, this.name, this.replyTo, this.arguments, this.timestamp);
     }
 
     @Override
     public String toString() {
         return new StringBuilder(StringUtil.simpleClassName(this))
                 .append('[')
-                .append(String.format("commandNumber=%s, id=%s, name=%s, target=%s, replyTo=%s, timestamp=%s, arguments=%s", this.commandNumber, this.id, this.name, this.target, this.replyTo, this.timestamp, this.arguments))
+                .append(String.format("commandNumber=%s, id=%s, name=%s, replyTo=%s, timestamp=%s, arguments=%s", this.commandNumber, this.id, this.name, this.replyTo, this.timestamp, this.arguments))
                 .append(']')
                 .toString();
     }

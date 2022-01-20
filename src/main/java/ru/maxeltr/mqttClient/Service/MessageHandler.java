@@ -85,8 +85,8 @@ public class MessageHandler {
         if (topic.equalsIgnoreCase(this.commandTopic)) {
             try {
                 command = gson.fromJson(payload, Command.class);
-                logger.log(Level.INFO, String.format("Command %s was received. id=%s, timestamp=%s, replyTo=%s, target=%s, arguments=%s.", command.getName(), command.getId(), command.getTimestamp(), command.getReplyTo(), command.getTarget(), command.getArguments()));
-                System.out.println(String.format("Command %s was received. id=%s, timestamp=%s, replyTo=%s, target=%s, arguments=%s.", command.getName(), command.getId(), command.getTimestamp(), command.getReplyTo(), command.getTarget(), command.getArguments()));
+                logger.log(Level.INFO, String.format("Command %s was received. id=%s, timestamp=%s, replyTo=%s, arguments=%s.", command.getName(), command.getId(), command.getTimestamp(), command.getReplyTo(), command.getArguments()));
+                System.out.println(String.format("Command %s was received. id=%s, timestamp=%s, replyTo=%s, arguments=%s.", command.getName(), command.getId(), command.getTimestamp(), command.getReplyTo(), command.getArguments()));
                 this.messageDispatcher.execute(command);
             } catch (JsonSyntaxException | NullPointerException ex) {
                 logger.log(Level.SEVERE, "Malformed Json or empty message payload.", ex);

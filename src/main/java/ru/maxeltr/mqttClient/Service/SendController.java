@@ -68,7 +68,6 @@ public class SendController {
         command.setId(UUID.randomUUID().toString())
                 .setName(config.getProperty("command." + numberCommand + ".Name", ""))
                 .setReplyTo(config.getProperty("receivingCommandRepliesTopic", ""))
-                .setTarget(config.getProperty("command." + numberCommand + ".Target", ""))
                 .setArguments(config.getProperty("command." + numberCommand + ".Arguments", ""))
                 .setTimestamp(timestamp);
 

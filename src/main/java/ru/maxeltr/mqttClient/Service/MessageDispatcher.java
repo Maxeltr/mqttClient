@@ -106,10 +106,10 @@ public class MessageDispatcher {
             return;
         }
         logger.log(Level.INFO, String.format("Command %s was sent to topic %s with Qos %s. id=%s, target=%s, replyTo=%s, arguments=%s, timestamp=%s.",
-                command.getName(), topic, Qos, command.getId(), command.getTarget(), command.getReplyTo(), command.getArguments(), command.getTimestamp()
+                command.getName(), topic, Qos, command.getId(), command.getReplyTo(), command.getArguments(), command.getTimestamp()
         ));
         System.out.println(String.format("Command %s was sent to topic %s with Qos %s. id=%s, target=%s, replyTo=%s, arguments=%s, timestamp=%s.",
-                command.getName(), topic, Qos, command.getId(), command.getTarget(), command.getReplyTo(), command.getArguments(), command.getTimestamp()
+                command.getName(), topic, Qos, command.getId(), command.getReplyTo(), command.getArguments(), command.getTimestamp()
         ));
     }
 

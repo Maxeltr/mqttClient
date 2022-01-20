@@ -38,18 +38,15 @@ public class Command {
 
     private final String name;
 
-    private final String target;
-
     private final String replyTo;
 
     private final String arguments;
 
     private final String timestamp;
 
-    public Command(String id, String name, String target, String replyTo, String arguments, String timestamp) {
+    public Command(String id, String name, String replyTo, String arguments, String timestamp) {
         this.id = id;
         this.name = name;
-        this.target = target;
         this.replyTo = replyTo;
         this.arguments = arguments;
         this.timestamp = timestamp;
@@ -67,10 +64,6 @@ public class Command {
         return name;
     }
 
-    public String getTarget() {
-        return target;
-    }
-
     public String getArguments() {
         return arguments;
     }
@@ -83,7 +76,7 @@ public class Command {
     public String toString() {
         return new StringBuilder(StringUtil.simpleClassName(this))
                 .append('[')
-                .append(String.format("id=%s, name=%s, target=%s, replyTo=%s, timestamp=%s, arguments=%s", this.id, this.name, this.target, this.replyTo, this.timestamp, this.arguments))
+                .append(String.format("id=%s, name=%s, replyTo=%s, timestamp=%s, arguments=%s", this.id, this.name, this.replyTo, this.timestamp, this.arguments))
                 .append(']')
                 .toString();
     }
