@@ -121,12 +121,12 @@ public class CommandService {
         }
 
         String result = this.launch(command, command.getArguments() != null ? command.getArguments() : "");
-        if (result.isEmpty()) {
-            logger.log(Level.INFO, String.format("Error with executing command name=%s, id=%s. Empty result was returned. Arguments %s", command.getName(), command.getId(), command.getArguments()));
-            System.out.println(String.format("Error with executing command name=%s, id=%s. Empty result was returned. Arguments %s", command.getName(), command.getId(), command.getArguments()));
-            this.send(replyTopic, new Reply(command.getId(), command.getName(), timestamp, "Error with executing command", "fail", "text/plain"));
-            return;
-        }
+//        if (result.isEmpty()) {
+//            logger.log(Level.INFO, String.format("Error with executing command name=%s, id=%s. Empty result was returned. Arguments %s", command.getName(), command.getId(), command.getArguments()));
+//            System.out.println(String.format("Error with executing command name=%s, id=%s. Empty result was returned. Arguments %s", command.getName(), command.getId(), command.getArguments()));
+//            this.send(replyTopic, new Reply(command.getId(), command.getName(), timestamp, "Error with executing command", "fail", "text/plain"));
+//            return;
+//        }
 
         String type;
         try {

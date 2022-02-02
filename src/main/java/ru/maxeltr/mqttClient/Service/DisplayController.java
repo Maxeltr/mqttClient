@@ -31,10 +31,10 @@ public class DisplayController {
 
     //@SendTo("/topic/screenshots")
     public void display(Reply reply) {
-        String card = config.getProperty(reply.getName() + ".Display", "");
+        String card = config.getProperty(reply.getName() + ".replyDisplay", "");
         if (card.trim().isEmpty()) {
-            logger.log(Level.WARNING, String.format("Invalid %s.Display property.", reply.getName()));
-            System.out.println(String.format("Invalid %s.Display property.", reply.getName()));
+            logger.log(Level.WARNING, String.format("Invalid %s.replyDisplay property.", reply.getName()));
+            System.out.println(String.format("Invalid %s.replyDisplay property.", reply.getName()));
             return;
         }
 
@@ -45,10 +45,10 @@ public class DisplayController {
     }
 
     public void display(String topic, JsonObject data) {
-        String card = config.getProperty(topic + ".Display", "");
+        String card = config.getProperty(topic + ".replyDisplay", "");
         if (card.trim().isEmpty()) {
-            logger.log(Level.WARNING, String.format("Invalid %s.Display property.", topic));
-            System.out.println(String.format("Invalid %s.Display property.", topic));
+            logger.log(Level.WARNING, String.format("Invalid %s.replyDisplay property.", topic));
+            System.out.println(String.format("Invalid %s.replyDisplay property.", topic));
             return;
         }
 
