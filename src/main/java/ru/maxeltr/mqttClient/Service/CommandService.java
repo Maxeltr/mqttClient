@@ -171,12 +171,12 @@ public class CommandService {
         logger.log(Level.INFO, String.format("CommandService. Start handle reply name=%s, id=%s.", reply.getName(), reply.getCommandId()));
         System.out.println(String.format("CommandService. Start handle reply name=%s, id=%s.", reply.getName(), reply.getCommandId()));
 
-        File file = new File("c:\\java\\mqttClient\\test.jpg");
-        try (FileOutputStream fileOutputStream = new FileOutputStream(file)) {
-            fileOutputStream.write(Base64.getDecoder().decode(reply.getPayload()));
-        } catch (IOException | IllegalArgumentException ex) {
-            Logger.getLogger(MessageHandler.class.getName()).log(Level.SEVERE, null, ex);
-        }
+//        File file = new File("c:\\java\\mqttClient\\test.jpg");
+//        try (FileOutputStream fileOutputStream = new FileOutputStream(file)) {
+//            fileOutputStream.write(Base64.getDecoder().decode(reply.getPayload()));
+//        } catch (IOException | IllegalArgumentException ex) {
+//            Logger.getLogger(MessageHandler.class.getName()).log(Level.SEVERE, null, ex);
+//        }
 
         this.messageDispatcher.display(reply);
 

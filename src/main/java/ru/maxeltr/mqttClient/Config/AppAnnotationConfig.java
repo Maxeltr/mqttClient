@@ -97,16 +97,16 @@ public class AppAnnotationConfig {
     }
 
     /*
-     * For scheduling publish messages
+     * For scheduling measurements
      */
-    @Bean(name="publishPeriodicTrigger")
-    public PeriodicTrigger publishPeriodicTrigger(Config config) {						//add
-        String publishMqttMessageTimer = config.getProperty("publishMqttMessageTimer", "10");
-        if (publishMqttMessageTimer.trim().isEmpty()) {
-            throw new IllegalStateException("Invalid publishMqttMessageTimer property");
+    @Bean(name = "measurementPeriodicTrigger")
+    public PeriodicTrigger measurementPeriodicTrigger(Config config) {
+        String measurementPeriod = config.getProperty("measurementPeriodicTrigger", "10");
+        if (measurementPeriod.trim().isEmpty()) {
+            throw new IllegalStateException("Invalid measurementPeriodicTrigger property");
         }
-        PeriodicTrigger periodicTrigger = new PeriodicTrigger(Long.parseLong(publishMqttMessageTimer, 10), TimeUnit.SECONDS);
-        periodicTrigger.setInitialDelay(Long.parseLong(publishMqttMessageTimer, 10));
+        PeriodicTrigger periodicTrigger = new PeriodicTrigger(Long.parseLong(measurementPeriod, 10), TimeUnit.SECONDS);
+        periodicTrigger.setInitialDelay(Long.parseLong(measurementPeriod, 10));
         return periodicTrigger;
     }
 
@@ -127,7 +127,7 @@ public class AppAnnotationConfig {
     /*
      * For scheduling retransmit MqttMessages with a fixed delay which is defined by config
      */
-    @Bean(name="retransmitPeriodicTrigger")
+    @Bean(name = "retransmitPeriodicTrigger")
     public PeriodicTrigger retransmitPeriodicTrigger(Config config) {
         String retransmitMqttMessageTimer = config.getProperty("retransmitMqttMessageTimer", "40");
         if (retransmitMqttMessageTimer.trim().isEmpty()) {
@@ -204,7 +204,7 @@ public class AppAnnotationConfig {
     }
 
     @Bean
-    public Tika tika () {
+    public Tika tika() {
         return new Tika();
     }
 
