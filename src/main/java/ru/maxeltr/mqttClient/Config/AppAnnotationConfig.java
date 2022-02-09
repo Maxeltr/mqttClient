@@ -46,6 +46,7 @@ import ru.maxeltr.mqttClient.Mqtt.PromiseBroker;
 import ru.maxeltr.mqttClient.Service.CommandService;
 import ru.maxeltr.mqttClient.Service.DisplayController;
 import ru.maxeltr.mqttClient.Service.MessageHandler;
+import ru.maxeltr.mqttClient.Service.SensorManager;
 
 /**
  *
@@ -206,6 +207,11 @@ public class AppAnnotationConfig {
     @Bean
     public Tika tika() {
         return new Tika();
+    }
+
+    @Bean
+    public SensorManager sensorManager(Config config, ThreadPoolTaskScheduler taskScheduler, PeriodicTrigger measurementPeriodicTrigger, CommandService commandService) {
+        return new SensorManager(config, taskScheduler, measurementPeriodicTrigger, commandService);
     }
 
 //    @Bean

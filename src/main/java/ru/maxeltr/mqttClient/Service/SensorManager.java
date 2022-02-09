@@ -23,7 +23,22 @@
  */
 package ru.maxeltr.mqttClient.Service;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.logging.Logger;
 import javax.annotation.PostConstruct;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
@@ -45,7 +60,7 @@ public class SensorManager {
     private ThreadPoolTaskScheduler taskScheduler;
 
     private PeriodicTrigger periodicTrigger;
-    
+
     private ScheduledFuture<?> future;
 
     public SensorManager(Config config, ThreadPoolTaskScheduler taskScheduler, PeriodicTrigger periodicTrigger, CommandService commandService) {
@@ -53,10 +68,33 @@ public class SensorManager {
         this.taskScheduler = taskScheduler;
         this.periodicTrigger = periodicTrigger;
         this.commandService = commandService;
+
     }
 
     @PostConstruct
-    public void scheduleRunnableWithCronTrigger() {
+    public void scheduleRunnableWithCronTrigger() throws ClassNotFoundException, InstantiationException, IllegalAccessException, NoSuchMethodException, IllegalArgumentException, InvocationTargetException, MalformedURLException, IOException {
+
+        String pathToJar = "c:\\java\\mqttClient\\Components\\app.jar";
+
+        Set<Class> classes = getClassesFromJarFile(new File(pathToJar));
+
+        Set<Object> components = new HashSet<>();
+        for (Class clazz : classes) {
+            System.out.println(String.format("SENSORMANAGER. %s", clazz));
+            for (Method method: clazz.getMethods()) {
+
+                System.out.println(String.format("SENSORMANAGER. %s", method.getName()));
+//                components.add(instantiateClass(clazz));
+            }
+
+
+        }
+
+        for (Object component : components) {
+            System.out.println(String.format("SENSORMANAGER. %s", component));
+        }
+
+//        System.out.println(String.format("SENSORMANAGER. %s", component));
         this.future = taskScheduler.schedule(new RunnableTask(), periodicTrigger);
     }
 
@@ -66,5 +104,42 @@ public class SensorManager {
         public void run() {
 
         }
+    }
+
+    public static Set<String> getClassNamesFromJarFile(File givenFile) throws IOException {
+        Set<String> classNames = new HashSet<>();
+        try (JarFile jarFile = new JarFile(givenFile)) {
+            Enumeration<JarEntry> e = jarFile.entries();
+            while (e.hasMoreElements()) {
+                JarEntry jarEntry = e.nextElement();
+                if (jarEntry.getName().endsWith(".class")) {
+                    String className = jarEntry.getName()
+                            .replace("/", ".")
+                            .replace(".class", "");
+                    classNames.add(className);
+                }
+            }
+            return classNames;
+        }
+    }
+
+    public static Set<Class> getClassesFromJarFile(File jarFile) throws IOException, ClassNotFoundException {
+        Set<String> classNames = getClassNamesFromJarFile(jarFile);
+        Set<Class> classes = new HashSet<>(classNames.size());
+        try (URLClassLoader cl = URLClassLoader.newInstance(
+                new URL[]{new URL("jar:file:" + jarFile + "!/")})) {
+            for (String name : classNames) {
+                Class clazz = cl.loadClass(name); // Load the class by its name
+                classes.add(clazz);
+            }
+        }
+        return classes;
+    }
+
+    public Object instantiateClass(Class<?> clazz) throws NoSuchMethodException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+        Constructor<?> constructor = clazz.getConstructor();
+        Object result = constructor.newInstance();
+
+        return result;
     }
 }
