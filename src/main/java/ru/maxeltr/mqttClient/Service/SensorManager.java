@@ -74,27 +74,12 @@ public class SensorManager {
     @PostConstruct
     public void scheduleRunnableWithCronTrigger() throws ClassNotFoundException, InstantiationException, IllegalAccessException, NoSuchMethodException, IllegalArgumentException, InvocationTargetException, MalformedURLException, IOException {
 
-        String pathToJar = "c:\\java\\mqttClient\\Components\\app.jar";
-
-        Set<Class> classes = getClassesFromJarFile(new File(pathToJar));
-
-        Set<Object> components = new HashSet<>();
-        for (Class clazz : classes) {
-            System.out.println(String.format("SENSORMANAGER. %s", clazz));
-            for (Method method: clazz.getMethods()) {
-
-                System.out.println(String.format("SENSORMANAGER. %s", method.getName()));
-//                components.add(instantiateClass(clazz));
-            }
-
-
-        }
+        Set<Object> components = this.loadComponents();
 
         for (Object component : components) {
             System.out.println(String.format("SENSORMANAGER. %s", component));
         }
 
-//        System.out.println(String.format("SENSORMANAGER. %s", component));
         this.future = taskScheduler.schedule(new RunnableTask(), periodicTrigger);
     }
 
@@ -106,9 +91,27 @@ public class SensorManager {
         }
     }
 
+    public Set<Object> loadComponents() throws IOException, ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+        String pathToJar = "c:\\java\\mqttClient\\Components\\app.jar";
+
+        Set<Class> classes = getClassesFromJarFile(new File(pathToJar));
+        Set<Object> components = new HashSet<>();
+        for (Class clazz : classes) {
+            Class[] interfaces = clazz.getInterfaces();
+            for (Class i : interfaces) {
+                if (i.getSimpleName().equals(Component.class.getSimpleName())) {
+                    components.add(instantiateClass(clazz));
+                }
+            }
+
+        }
+
+        return components;
+    }
+
     public static Set<String> getClassNamesFromJarFile(File givenFile) throws IOException {
         Set<String> classNames = new HashSet<>();
-        try (JarFile jarFile = new JarFile(givenFile)) {
+        try ( JarFile jarFile = new JarFile(givenFile)) {
             Enumeration<JarEntry> e = jarFile.entries();
             while (e.hasMoreElements()) {
                 JarEntry jarEntry = e.nextElement();
@@ -126,7 +129,7 @@ public class SensorManager {
     public static Set<Class> getClassesFromJarFile(File jarFile) throws IOException, ClassNotFoundException {
         Set<String> classNames = getClassNamesFromJarFile(jarFile);
         Set<Class> classes = new HashSet<>(classNames.size());
-        try (URLClassLoader cl = URLClassLoader.newInstance(
+        try ( URLClassLoader cl = URLClassLoader.newInstance(
                 new URL[]{new URL("jar:file:" + jarFile + "!/")})) {
             for (String name : classNames) {
                 Class clazz = cl.loadClass(name); // Load the class by its name
