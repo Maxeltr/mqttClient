@@ -23,10 +23,13 @@
  */
 package ru.maxeltr.mqttClient.Service;
 
+import com.google.gson.JsonObject;
+
 /**
  *
  * @author Maxim Eltratov <<Maxim.Eltratov@ya.ru>>
  */
-public interface Component {
+public interface PolledComponent extends Component {
 
+    JsonObject getReading();
 }

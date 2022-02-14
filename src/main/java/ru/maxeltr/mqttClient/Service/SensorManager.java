@@ -41,6 +41,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.logging.Logger;
 import javax.annotation.PostConstruct;
+import org.apache.commons.lang3.ClassUtils;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.support.PeriodicTrigger;
 import ru.maxeltr.mqttClient.Config.Config;
@@ -97,10 +98,14 @@ public class SensorManager {
         Set<Class> classes = getClassesFromJarFile(new File(pathToJar));
         Set<Object> components = new HashSet<>();
         for (Class clazz : classes) {
-            Class[] interfaces = clazz.getInterfaces();
-            for (Class i : interfaces) {
+            if (clazz.isInterface()) {
+                continue;
+            }
+            for (Class i : ClassUtils.getAllInterfaces(clazz)) {
+                System.out.println(String.format("SENSORMANAGER. class: %s. interface: %s", clazz, i));
                 if (i.getSimpleName().equals(Component.class.getSimpleName())) {
                     components.add(instantiateClass(clazz));
+                    break;
                 }
             }
 

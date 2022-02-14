@@ -27,6 +27,7 @@ package ru.maxeltr.mqttClient.Service;
  *
  * @author Maxim Eltratov <<Maxim.Eltratov@ya.ru>>
  */
-public interface Component {
+public interface CallbackComponent extends Component {
 
+    public void setCallback(Runnable T);
 }
