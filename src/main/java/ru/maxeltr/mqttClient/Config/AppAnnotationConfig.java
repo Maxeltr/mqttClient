@@ -210,8 +210,8 @@ public class AppAnnotationConfig {
     }
 
     @Bean
-    public SensorManager sensorManager(Config config, ThreadPoolTaskScheduler taskScheduler, PeriodicTrigger measurementPeriodicTrigger, CommandService commandService) {
-        return new SensorManager(config, taskScheduler, measurementPeriodicTrigger, commandService);
+    public SensorManager sensorManager(Config config, ThreadPoolTaskScheduler taskScheduler, PeriodicTrigger measurementPeriodicTrigger, MessageDispatcher messageDispatcher) {
+        return new SensorManager(config, taskScheduler, measurementPeriodicTrigger, messageDispatcher);
     }
 
 //    @Bean

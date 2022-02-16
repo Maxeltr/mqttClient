@@ -23,6 +23,7 @@
  */
 package ru.maxeltr.mqttClient.Service;
 
+import com.google.gson.JsonObject;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -33,12 +34,16 @@ import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.PostConstruct;
 import org.apache.commons.lang3.ClassUtils;
@@ -64,16 +69,18 @@ public class SensorManager {
 
     private ScheduledFuture<?> future;
 
-    public SensorManager(Config config, ThreadPoolTaskScheduler taskScheduler, PeriodicTrigger periodicTrigger, CommandService commandService) {
+    private MessageDispatcher messageDispatcher;
+
+    public SensorManager(Config config, ThreadPoolTaskScheduler taskScheduler, PeriodicTrigger periodicTrigger, MessageDispatcher messageDispatcher) {
         this.config = config;
         this.taskScheduler = taskScheduler;
         this.periodicTrigger = periodicTrigger;
-        this.commandService = commandService;
+        this.messageDispatcher = messageDispatcher;
 
     }
 
     @PostConstruct
-    public void scheduleRunnableWithCronTrigger() throws ClassNotFoundException, InstantiationException, IllegalAccessException, NoSuchMethodException, IllegalArgumentException, InvocationTargetException, MalformedURLException, IOException {
+    public void scheduleRunnableWithCronTrigger() throws ClassNotFoundException, InstantiationException, IllegalAccessException, NoSuchMethodException, IllegalArgumentException, InvocationTargetException, MalformedURLException, IOException, InterruptedException {
 
         Set<Object> components = this.loadComponents();
 
@@ -92,23 +99,51 @@ public class SensorManager {
         }
     }
 
-    public Set<Object> loadComponents() throws IOException, ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+    public Set<Object> loadComponents() throws IOException, ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, InterruptedException {
         String pathToJar = "c:\\java\\mqttClient\\Components\\app.jar";
 
         Set<Class> classes = getClassesFromJarFile(new File(pathToJar));
         Set<Object> components = new HashSet<>();
+        Set<Class> classesToInstantiate = new HashSet<>();
+        Set<Class> classesToSetCallback = new HashSet<>();
+
         for (Class clazz : classes) {
             if (clazz.isInterface()) {
                 continue;
             }
+
             for (Class i : ClassUtils.getAllInterfaces(clazz)) {
-                System.out.println(String.format("SENSORMANAGER. class: %s. interface: %s", clazz, i));
                 if (i.getSimpleName().equals(Component.class.getSimpleName())) {
-                    components.add(instantiateClass(clazz));
-                    break;
+                    classesToInstantiate.add(clazz);
+
+                }
+                if (i.getSimpleName().equals(CallbackComponent.class.getSimpleName())) {
+                    classesToSetCallback.add(clazz);
+
                 }
             }
+        }
 
+        Object instance;
+        for (Class i : classesToInstantiate) {
+            instance = instantiateClass(i);
+            components.add(instance);
+
+            if (classesToSetCallback.contains(i)) {
+                Method method = i.getMethod("setCallback", Consumer.class);
+                method.invoke(instance, (Consumer<Integer>) (JsonObject val) -> {
+                    System.out.println(String.format("SENSORMANAGER. LAMBDA"));
+                    logger.log(Level.INFO, String.format("SENSORMANAGER. LAMBDA. "));
+                    this.messageDispatcher.send("test", "EXACTLY_ONCE", val, Boolean.TRUE);
+                });
+
+                method = i.getMethod("start");
+                method.invoke(instance);
+                Thread.sleep(10000);
+                method = i.getMethod("stop");
+                method.invoke(instance);
+
+            }
         }
 
         return components;
