@@ -52,15 +52,22 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.PostConstruct;
 import org.apache.commons.lang3.ClassUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.context.ApplicationEvent;
+import org.springframework.context.ApplicationListener;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.support.PeriodicTrigger;
 import ru.maxeltr.mqttClient.Config.Config;
+import ru.maxeltr.mqttClient.Mqtt.ConnAckEvent;
+import ru.maxeltr.mqttClient.Mqtt.MqttPingScheduleHandler;
+import ru.maxeltr.mqttClient.Mqtt.PingTimeoutEvent;
+import ru.maxeltr.mqttClient.Mqtt.ShutdownEvent;
 
 /**
  *
  * @author Maxim Eltratov <<Maxim.Eltratov@ya.ru>>
  */
-public class SensorManager {
+public class SensorManager implements ApplicationListener<ApplicationEvent> {
 
     private static final Logger logger = Logger.getLogger(SensorManager.class.getName());
 
@@ -76,6 +83,8 @@ public class SensorManager {
 
     private MessageDispatcher messageDispatcher;
 
+    private Set<Object> components;
+
     public SensorManager(Config config, ThreadPoolTaskScheduler taskScheduler, PeriodicTrigger periodicTrigger, MessageDispatcher messageDispatcher) {
         this.config = config;
         this.taskScheduler = taskScheduler;
@@ -87,9 +96,9 @@ public class SensorManager {
     @PostConstruct
     public void scheduleRunnableWithCronTrigger() {
 
-        Set<Object> components = this.loadComponents();
+        this.components = this.loadComponents();
 
-        for (Object component : components) {
+        for (Object component : this.components) {
             System.out.println(String.format("SENSORMANAGER. %s", component));
         }
 
@@ -100,7 +109,8 @@ public class SensorManager {
 
         @Override
         public void run() {
-
+            logger.log(Level.INFO, String.format("SensorManager RunnableTask start."));
+            System.out.println(String.format("SensorManager RunnableTask start."));
         }
     }
 
@@ -117,7 +127,13 @@ public class SensorManager {
 
         Set<Object> components = new HashSet<>();
         for (Path path : paths) {
-//            this.loadClassesFromJar(path, components);
+            try {
+                this.loadClassesFromJar(path, components);
+            } catch (IOException ex) {
+                Logger.getLogger(SensorManager.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (ClassNotFoundException ex) {
+                Logger.getLogger(SensorManager.class.getName()).log(Level.SEVERE, null, ex);
+            }
         }
 
         return components;
@@ -165,7 +181,7 @@ public class SensorManager {
     private Set listFiles(String dir) {
         Set<Path> pathSet = new HashSet();
 
-        try ( Stream<Path> paths = Files.walk(Paths.get(dir))) {
+        try (Stream<Path> paths = Files.walk(Paths.get(dir))) {
             pathSet = paths
                     .filter(Files::isRegularFile)
                     .peek((file) -> {
@@ -216,15 +232,17 @@ public class SensorManager {
 
         Object instance;
         for (Class i : classesToInstantiate) {
-
             try {
                 instance = instantiateClass(i);
                 if (classesToSetCallback.contains(i)) {
                     Method method = i.getMethod("setCallback", Consumer.class);
                     method.invoke(instance, (Consumer<JsonObject>) (JsonObject val) -> {
-                        System.out.println(String.format("SENSORMANAGER. LAMBDA: %s", val));
-                        logger.log(Level.INFO, String.format("SENSORMANAGER. LAMBDA. "));
-                        this.messageDispatcher.send(val.get("topic").getAsString(), val.get("qos").getAsString(), val, val.get("retain").getAsBoolean());
+                        SensorManager.this.messageDispatcher.send(
+                                "sensors",    //TODO move to config
+                                "AT_MOST_ONCE",
+                                val,
+                                false
+                        );
                     });
                 }
                 components.add(instance);
@@ -235,9 +253,28 @@ public class SensorManager {
         }
     }
 
+    @Override
+    public void onApplicationEvent(ApplicationEvent event) {
+        if (event instanceof ConnAckEvent) {
+            System.out.println(String.format("ConnAck event was received."));
+            logger.log(Level.INFO, String.format("ConnAck event was received."));
+
+            for (Object component : this.components) {
+                System.out.println(String.format("SENSORMANAGER. %s", component));
+                try {
+                    Method method = component.getClass().getMethod("start");
+                    method.invoke(component);
+                } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+                    Logger.getLogger(SensorManager.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+
+        }
+    }
+
     public static Set<String> getClassNamesFromJarFile(File givenFile) throws IOException {
         Set<String> classNames = new HashSet<>();
-        try ( JarFile jarFile = new JarFile(givenFile)) {
+        try (JarFile jarFile = new JarFile(givenFile)) {
             Enumeration<JarEntry> e = jarFile.entries();
             while (e.hasMoreElements()) {
                 JarEntry jarEntry = e.nextElement();
@@ -255,7 +292,7 @@ public class SensorManager {
     public static Set<Class> getClassesFromJarFile(File jarFile) throws IOException, ClassNotFoundException {
         Set<String> classNames = getClassNamesFromJarFile(jarFile);
         Set<Class> classes = new HashSet<>(classNames.size());
-        try ( URLClassLoader cl = URLClassLoader.newInstance(
+        try (URLClassLoader cl = URLClassLoader.newInstance(
                 new URL[]{new URL("jar:file:" + jarFile + "!/")})) {
             for (String name : classNames) {
                 Class clazz = cl.loadClass(name); // Load the class by its name
@@ -266,8 +303,8 @@ public class SensorManager {
     }
 
     public Object instantiateClass(Class<?> clazz) throws NoSuchMethodException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
-        Constructor<?> constructor = clazz.getConstructor(String.class, Config.class);
-        Object result = constructor.newInstance(clazz.getSimpleName(), this.config);
+        Constructor<?> constructor = clazz.getConstructor();
+        Object result = constructor.newInstance();
 
         return result;
     }
