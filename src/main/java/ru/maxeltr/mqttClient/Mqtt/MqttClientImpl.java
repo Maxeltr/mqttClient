@@ -316,7 +316,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, Co
         return connectFuture;
     }
 
-    public void reconnect(MqttPingScheduleHandler pingHandler) {
+    public synchronized void reconnect(MqttPingScheduleHandler pingHandler) {
         if (!this.reconnect) {
             pingHandler.cancelPing();
             logger.log(Level.INFO, String.format("Reconnect is not allowed by config."));
@@ -334,11 +334,11 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, Co
             throw new IllegalStateException("Invalid port property");
         }
 
-        if (this.reconnecting) {
-            logger.log(Level.INFO, String.format("Unable to start reconnecting. The connection is being reconnected."));
-            System.out.println(String.format("Unable to start reconnecting. The connection is being reconnected."));
-            return;
-        }
+//        if (this.reconnecting) {
+//            logger.log(Level.INFO, String.format("Unable to start reconnecting. The connection is being reconnected."));
+//            System.out.println(String.format("Unable to start reconnecting. The connection is being reconnected."));
+//            return;
+//        }
         this.reconnecting = true;
         this.reconnectAttempts = this.reconnectAttempts + 1;
 
@@ -363,7 +363,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, Co
                 }
                 this.reconnecting = false;
             });
-        } catch (InterruptedException ex) {
+        } catch (Exception ex) {
             this.reconnecting = false;
             Logger.getLogger(MqttClientImpl.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -497,7 +497,13 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, Co
             throw new IllegalArgumentException("Invalid MqttQoS given");
         }
 
-        this.writeAndFlush(message);
+        ChannelFuture chf = this.writeAndFlush(message);
+//        chf.addListener((FutureListener) (Future f) -> {
+//            if  (!f.isSuccess()) {
+//                logger.log(Level.SEVERE, String.format("writeAndFlush failed. Shutdown. %s", f));
+//                this.shutdown();
+//            }
+//        });
 
         System.out.println(String.format("Sent publish message id: %s, t: %s, d: %s, q: %s, r: %s.",
                 message.variableHeader().packetId(),

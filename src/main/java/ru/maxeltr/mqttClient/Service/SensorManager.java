@@ -238,10 +238,10 @@ public class SensorManager implements ApplicationListener<ApplicationEvent> {
                     Method method = i.getMethod("setCallback", Consumer.class);
                     method.invoke(instance, (Consumer<JsonObject>) (JsonObject val) -> {
                         SensorManager.this.messageDispatcher.send(
-                                "sensors",    //TODO move to config
-                                "AT_MOST_ONCE",
+                                val.get("topic").getAsString(),    //TODO move to config
+                                val.get("qos").getAsString(),
                                 val,
-                                false
+                                val.get("retain").getAsBoolean()
                         );
                     });
                 }
