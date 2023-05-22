@@ -69,6 +69,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -110,7 +111,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, Co
 
     private final Integer reconnectDelay;
 
-    private Boolean reconnecting;
+    private AtomicBoolean reconnecting = new AtomicBoolean();;
 
     private Integer reconnectAttempts;
 
@@ -149,7 +150,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, Co
             MqttChannelInitializer mqttChannelInitializer,
             ApplicationEventPublisher applicationEventPublisher
     ) {
-        this.reconnecting = false;
+        //this.reconnecting = false;
         this.reconnectAttempts = 0;
         this.config = config;
         this.promiseBroker = promiseBroker;
@@ -334,12 +335,12 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, Co
             throw new IllegalStateException("Invalid port property");
         }
 
-//        if (this.reconnecting) {
-//            logger.log(Level.INFO, String.format("Unable to start reconnecting. The connection is being reconnected."));
-//            System.out.println(String.format("Unable to start reconnecting. The connection is being reconnected."));
-//            return;
-//        }
-        this.reconnecting = true;
+        if (this.reconnecting.get()) {
+            logger.log(Level.INFO, String.format("Unable to start reconnecting. The connection is being reconnected."));
+            System.out.println(String.format("Unable to start reconnecting. The connection is being reconnected."));
+            return;
+        }
+        this.reconnecting.set(true);
         this.reconnectAttempts = this.reconnectAttempts + 1;
 
         System.out.println(String.format("Start reconnect! Attempt %s. %n%n", this.reconnectAttempts));
@@ -354,19 +355,20 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, Co
 
         try {
             Thread.sleep(TimeUnit.SECONDS.toMillis(this.reconnectDelay));
-            this.connect(host, Integer.parseInt(port), f -> {
+            this.connect(host, Integer.parseInt(port), f -> {       //TODO how to caught exception in lambda?
                 if (f.isSuccess()) {
                     logger.log(Level.INFO, String.format("Reconnection is successful."));
                     System.out.println(String.format("Reconnection is successful."));
                     this.subscribeFromConfig();
                     pingHandler.cancelPing();
                 }
-                this.reconnecting = false;
+                this.reconnecting.set(false);
             });
         } catch (Exception ex) {
-            this.reconnecting = false;
+            this.reconnecting.set(false);
             Logger.getLogger(MqttClientImpl.class.getName()).log(Level.SEVERE, null, ex);
         }
+
 
     }
 
