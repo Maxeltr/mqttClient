@@ -163,7 +163,7 @@ public class MqttChannelInitializer extends ChannelInitializer<SocketChannel> im
     }
 
     private MqttExceptionHandler createExceptionHandler() {
-        return new MqttExceptionHandler();
+        return new MqttExceptionHandler(this.promiseBroker);
     }
 
     @Override

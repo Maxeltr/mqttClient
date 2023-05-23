@@ -28,6 +28,9 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
+import io.netty.handler.codec.mqtt.MqttConnAckMessage;
+import io.netty.util.concurrent.Promise;
+import java.io.IOException;
 import java.net.SocketAddress;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -43,6 +46,12 @@ public class MqttExceptionHandler extends ChannelDuplexHandler {
 
     private static final Logger logger = Logger.getLogger(MqttExceptionHandler.class.getName());
 
+    private final PromiseBroker promiseBroker;
+
+    public MqttExceptionHandler(PromiseBroker promiseBroker) {
+        this.promiseBroker = promiseBroker;
+    }
+
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         // Uncaught exceptions from inbound handlers will propagate up to this handler
@@ -57,6 +66,11 @@ public class MqttExceptionHandler extends ChannelDuplexHandler {
                 Throwable failureCause = future.cause();
                 logger.log(Level.INFO, String.format("Connection failed. Uncaught exception from outbound handler. %n %s", ExceptionUtils.getStackTrace(failureCause)));
                 System.out.println(String.format("Connection failed. Uncaught exception from outbound handler %s.", failureCause.getMessage()));
+
+                Promise<MqttConnAckMessage> future2 = this.promiseBroker.getConnectFuture();
+                if (!future2.isDone()) {
+                    future2.setFailure(new IOException("Connection lost"));
+                }
             }
         }));
     }

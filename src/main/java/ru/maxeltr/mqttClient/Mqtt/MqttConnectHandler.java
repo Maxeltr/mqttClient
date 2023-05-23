@@ -148,7 +148,8 @@ public class MqttConnectHandler extends ChannelInboundHandlerAdapter {
                 this.publishConnAckEvent(message);
                 future = this.promiseBroker.getConnectFuture();
                 if (!future.isDone()) {
-                    future.setSuccess(message);
+                    //future.setSuccess(message);
+                    future.cancel(true);
                 }
                 logger.log(Level.INFO, String.format("Received CONNACK message. Connection refused %s.", message.variableHeader()));
                 System.out.println(String.format("Received CONNACK message. Connection refused %s.", message.variableHeader()));
