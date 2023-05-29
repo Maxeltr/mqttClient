@@ -24,6 +24,7 @@
 package ru.maxeltr.mqttClient.Service;
 
 import com.google.gson.JsonObject;
+import io.netty.handler.codec.mqtt.MqttQoS;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -239,7 +240,7 @@ public class SensorManager implements ApplicationListener<ApplicationEvent> {
                     method.invoke(instance, (Consumer<JsonObject>) (JsonObject val) -> {
                         SensorManager.this.messageDispatcher.send(
                                 val.get("topic").getAsString(),    //TODO move to config
-                                val.get("qos").getAsString(),
+                                MqttQoS.AT_LEAST_ONCE.name(), //val.get("qos").getAsString(),
                                 val,
                                 val.get("retain").getAsBoolean()
                         );

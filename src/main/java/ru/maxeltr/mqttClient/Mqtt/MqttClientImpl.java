@@ -352,7 +352,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, Co
             this.clearPendingMessages();
         }
         this.activeTopics.clear();
-
+        pingHandler.cancelPing();
         try {
             Thread.sleep(TimeUnit.SECONDS.toMillis(this.reconnectDelay));
             this.connect(host, Integer.parseInt(port), f -> {       //TODO how to caught exception in lambda?
@@ -360,7 +360,7 @@ public class MqttClientImpl implements ApplicationListener<ApplicationEvent>, Co
                     logger.log(Level.INFO, String.format("Reconnection is successful."));
                     System.out.println(String.format("Reconnection is successful."));
                     this.subscribeFromConfig();
-                    pingHandler.cancelPing();
+                    //pingHandler.cancelPing();
                 }
                 this.reconnecting.set(false);
             });
